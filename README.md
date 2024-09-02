@@ -45,5 +45,5 @@ Contributions are welcome! If you have suggestions, improvements, or bug fixes, 
 
 ## License
 
-This project is licensed under the GNU 3.0 License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPL 3.0 License. See the [LICENSE](LICENSE) file for details.
 
