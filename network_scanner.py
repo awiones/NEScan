@@ -14,40 +14,44 @@ import sys
 # Initialize colorama
 init(autoreset=True)
 
+# Configuration
 REPO_OWNER = 'awiones'
-REPO_NAME = 'Network-Scanner'
+REPO_NAME = 'NEScan'
 REPO_API_URL = f'https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest'
 LOCAL_VERSION_FILE = 'version.txt'
-RELEASES_URL = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/tag/IP-Scanner'
-
-def get_local_version():
-    if os.path.exists(LOCAL_VERSION_FILE):
-        with open(LOCAL_VERSION_FILE, 'r') as file:
-            return file.read().strip()
-    return '0.0.0'
 
 def get_latest_version():
     try:
         response = requests.get(REPO_API_URL)
         response.raise_for_status()
-        latest_release = response.json()
-        latest_version = latest_release['tag_name']
-        return latest_version
+        release_data = response.json()
+        return release_data['tag_name']
     except requests.RequestException as e:
-        print(f"Error checking for updates: {e}")
+        print(f"Error fetching release data: {e}")
         return None
 
-def update_script():
+def get_local_version():
     try:
-        download_url = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/download/IP-Scanner/Network-Scanner.py'
-        response = requests.get(download_url)
-        response.raise_for_status()
-        with open(__file__, 'wb') as file:
-            file.write(response.content)
-        print("Update downloaded. Please restart the script.")
-        sys.exit(0)
-    except requests.RequestException as e:
-        print(f"Error updating script: {e}")
+        with open(LOCAL_VERSION_FILE, 'r') as file:
+            return file.read().strip()
+    except FileNotFoundError:
+        return None
+
+def update_local_version(version):
+    with open(LOCAL_VERSION_FILE, 'w') as file:
+        file.write(version)
+
+def main():
+    latest_version = get_latest_version()
+    if latest_version:
+        local_version = get_local_version()
+        if local_version != latest_version:
+            print(f"Updating local version from {local_version} to {latest_version}")
+            update_local_version(latest_version)
+        else:
+            print("Local version is up to date.")
+    else:
+        print("Could not fetch the latest version.")
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
