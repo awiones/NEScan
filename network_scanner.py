@@ -10,8 +10,42 @@ from colorama import Fore, Back, Style, init
 import time
 import sys
 
+
 # Initialize colorama
 init(autoreset=True)
+
+REPO_OWNER = 'awiones'
+REPO_NAME = 'Network-Scanner'
+REPO_API_URL = f'https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest'
+LOCAL_VERSION_FILE = 'version.txt'
+UPDATE_FILE_URL = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/latest/download/your_script_name.py'
+
+def get_local_version():
+    if os.path.exists(LOCAL_VERSION_FILE):
+        with open(LOCAL_VERSION_FILE, 'r') as file:
+            return file.read().strip()
+    return '0.0.0'
+
+def get_latest_version():
+    try:
+        response = requests.get(REPO_API_URL)
+        response.raise_for_status()
+        latest_version = response.json()['tag_name']
+        return latest_version
+    except requests.RequestException as e:
+        print(f"Error checking for updates: {e}")
+        return None
+
+def update_script():
+    try:
+        response = requests.get(UPDATE_FILE_URL)
+        response.raise_for_status()
+        with open(__file__, 'wb') as file:
+            file.write(response.content)
+        print("Update downloaded. Please restart the script.")
+        sys.exit(0)
+    except requests.RequestException as e:
+        print(f"Error updating script: {e}")
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -28,8 +62,6 @@ def print_header():
     print(Fore.CYAN + "███   ███   ███    ███    ▄█    ███ ███    ███   ███    ███ ███   ███ ")
     print(Fore.CYAN + " ▀█   █▀    ██████████  ▄████████▀  ████████▀    ███    █▀   ▀█   █▀  ")
     print(Fore.CYAN + "="*69 + Style.RESET_ALL)
-
-
 
 def animate_spinner(duration):
     spinner = ['|', '/', '-', '\\']
