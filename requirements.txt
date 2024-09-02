@@ -1,0 +1,9 @@
+socket
+subprocess
+ssl
+os
+dnspython
+python-whois
+requests
+python-nmap
+colorama
