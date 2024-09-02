@@ -47,3 +47,6 @@ Contributions are welcome! If you have suggestions, improvements, or bug fixes, 
 
 This project is licensed under the GPL 3.0 License. See the [LICENSE](LICENSE) file for details.
 
+---
+
+Made with ❤️ by Awiones
