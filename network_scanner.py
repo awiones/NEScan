@@ -18,7 +18,7 @@ REPO_OWNER = 'awiones'
 REPO_NAME = 'Network-Scanner'
 REPO_API_URL = f'https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest'
 LOCAL_VERSION_FILE = 'version.txt'
-UPDATE_FILE_URL = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/latest/download/your_script_name.py'
+RELEASES_URL = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/tag/IP-Scanner'
 
 def get_local_version():
     if os.path.exists(LOCAL_VERSION_FILE):
