@@ -33,6 +33,10 @@ python3 network_scanner.py
 
 ## Additional Information
 
+```markdown
+![Screenshot](./preview.png)
+
+
 - **Privacy and Security**: This tool is designed for ethical use. Ensure you have permission to scan and analyze the websites and IP addresses you target. Unauthorized scanning can be illegal and unethical.
 
 - **Limitations**: The accuracy of the results may vary depending on the availability and response of the services queried. For example, DNS lookups and Whois data may not always be up-to-date or complete.
