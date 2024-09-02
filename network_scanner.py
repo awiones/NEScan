@@ -30,7 +30,8 @@ def get_latest_version():
     try:
         response = requests.get(REPO_API_URL)
         response.raise_for_status()
-        latest_version = response.json()['tag_name']
+        latest_release = response.json()
+        latest_version = latest_release['tag_name']
         return latest_version
     except requests.RequestException as e:
         print(f"Error checking for updates: {e}")
@@ -38,7 +39,8 @@ def get_latest_version():
 
 def update_script():
     try:
-        response = requests.get(UPDATE_FILE_URL)
+        download_url = f'https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/download/IP-Scanner/Network-Scanner.py'
+        response = requests.get(download_url)
         response.raise_for_status()
         with open(__file__, 'wb') as file:
             file.write(response.content)
