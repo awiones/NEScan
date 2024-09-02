@@ -2,6 +2,10 @@
 
 This repository contains a Python tool designed for comprehensive network scanning and analysis. The Network Scanner performs various tasks to gather information about websites and IP addresses, including DNS resolution, port scanning, SSL certificate fetching, Whois data retrieval, and more.
 
+<p align="center">
+<img src="./logo.png" width="300px">
+</p>
+
 ## Features
 
 - **DNS Records**: Fetch DNS A records for a given domain.
