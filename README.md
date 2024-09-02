@@ -26,8 +26,8 @@ You can install the necessary Python packages using `pip` with the provided `req
 
 ```bash
   git clone https://github.com/awiones/Network-Scanner.git
-  pip install -r requirements.txt
   cd Network-Scanner
+  pip install -r requirements.txt
   python3 network_scanner.py
 ```
 
