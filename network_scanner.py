@@ -18,16 +18,17 @@ def clear_screen():
 
 def print_header():
     clear_screen()
-    print(Fore.CYAN + "="*139)
-    print(Fore.CYAN + "888b    888          888                                   888            .d8888b.                                                       ")
-    print(Fore.CYAN + "8888b   888          888                                   888           d88P  Y88b                                                      ")
-    print(Fore.CYAN + "88888b  888          888                                   888           Y88b.                                                           ")
-    print(Fore.CYAN + "888Y88b 888  .d88b.  888888 888  888  888  .d88b.  888d888 888  888       \"Y888b.    .d8888b  8888b.  88888b.  88888b.   .d88b.  888d888 ")
-    print(Fore.CYAN + "888 Y88b888 d8P  Y8b 888    888  888  888 d88\"\"88b 888P\"   888 .88P          \"Y88b. d88P\"        \"88b 888 \"88b 888 \"88b d8P  Y8b 888P\"   ")
-    print(Fore.CYAN + "888  Y88888 88888888 888    888  888  888 888  888 888     888888K             \"888 888      .d888888 888  888 888  888 88888888 888     ")
-    print(Fore.CYAN + "888   Y8888 Y8b.     Y88b.  Y88b 888 d88P Y88..88P 888     888 \"88b      Y88b  d88P Y88b.    888  888 888  888 888  888 Y8b.     888     ")
-    print(Fore.CYAN + "888    Y888  \"Y8888   \"Y888  \"Y8888888P\"   \"Y88P\"  888     888  888       \"Y8888P\"   \"Y8888P \"Y888888 888  888 888  888  \"Y8888  888     ")
-    print(Fore.CYAN + "="*139 + Style.RESET_ALL)
+    print(Fore.CYAN + "="*69)
+    print(Fore.CYAN + "███▄▄▄▄      ▄████████    ▄████████  ▄████████    ▄████████ ███▄▄▄▄   ")
+    print(Fore.CYAN + "███▀▀▀██▄   ███    ███   ███    ███ ███    ███   ███    ███ ███▀▀▀██▄ ")
+    print(Fore.CYAN + "███   ███   ███    █▀    ███    █▀  ███    █▀    ███    ███ ███   ███ ")
+    print(Fore.CYAN + "███   ███  ▄███▄▄▄       ███        ███          ███    ███ ███   ███ ")
+    print(Fore.CYAN + "███   ███ ▀▀███▀▀▀     ▀███████████ ███        ▀███████████ ███   ███ ")
+    print(Fore.CYAN + "███   ███   ███    █▄           ███ ███    █▄    ███    ███ ███   ███ ")
+    print(Fore.CYAN + "███   ███   ███    ███    ▄█    ███ ███    ███   ███    ███ ███   ███ ")
+    print(Fore.CYAN + " ▀█   █▀    ██████████  ▄████████▀  ████████▀    ███    █▀   ▀█   █▀  ")
+    print(Fore.CYAN + "="*69 + Style.RESET_ALL)
+
 
 
 def animate_spinner(duration):
