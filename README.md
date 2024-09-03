@@ -31,7 +31,7 @@ python3 network_scanner.py
 If you got error you might need to upgrade this
 
 ```bash
-pip install --upgrade cryptography
+pip install --upgrade pyOpenSSL cryptography
 pip install --upgrade dns aioquic
 ```
 
