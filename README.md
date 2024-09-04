@@ -37,8 +37,9 @@ pip install --upgrade dns aioquic
 
 ## Additional Information
 
-![Preview](./nescan.png)
-
+<div style="width: 100%; max-width: 600px; margin: auto;">
+  <img src="../nescan.png" alt="Main Page Screenshot" style="width: 100%; height: auto; display: block;">
+</div>
 
 - **Privacy and Security**: This tool is designed for ethical use. Ensure you have permission to scan and analyze the websites and IP addresses you target. Unauthorized scanning can be illegal and unethical.
 
