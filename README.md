@@ -22,18 +22,18 @@ This repository contains a Python tool designed for comprehensive network scanni
 
 ## Installation
 
-```bash
-git clone https://github.com/awiones/Network-Scanner.git
-cd Network-Scanner
-pip install -r requirements.txt
-python3 network_scanner.py
-```
+  ```bash
+  git clone https://github.com/awiones/Network-Scanner.git
+  cd Network-Scanner
+  pip install -r requirements.txt
+  python3 network_scanner.py
+  ```
 If you got error you might need to upgrade this
-
-```bash
-pip install --upgrade pyOpenSSL cryptography
-pip install --upgrade dns aioquic
-```
+  
+  ```bash
+  pip install --upgrade pyOpenSSL cryptography
+  pip install --upgrade dns aioquic
+  ```
 
 ## Additional Information
 
