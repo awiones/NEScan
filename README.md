@@ -37,9 +37,7 @@ If you got error you might need to upgrade this
 
 ## Additional Information
 
-<div style="width: 100%; max-width: 600px; margin: auto;">
-  <img src="./nescan.png" alt="Main Page Screenshot" style="width: 100%; height: auto; display: block;">
-</div>
+<img src="preview.PNG" alt="EasyADB Menu" width="600">
 
 - **Privacy and Security**: This tool is designed for ethical use. Ensure you have permission to scan and analyze the websites and IP addresses you target. Unauthorized scanning can be illegal and unethical.
 
