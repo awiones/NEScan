@@ -1,3 +1,4 @@
+import readline
 import socket
 import subprocess
 import ssl
