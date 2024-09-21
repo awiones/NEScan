@@ -3,5 +3,6 @@ dnspython
 python-whois
 requests
 python-nmap
+pyreadline
 cryptography==39.0.1  # Example version, adjust as necessary
 pyOpenSSL==23.0.0  # Example version, adjust as necessary
