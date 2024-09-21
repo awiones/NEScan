@@ -23,10 +23,10 @@ This repository contains a Python tool designed for comprehensive network scanni
 ## Installation
 
   ```bash
-  git clone https://github.com/awiones/Network-Scanner.git
-  cd Network-Scanner
+  git clone https://github.com/awiones/NEScan.git
+  cd NEScan
   pip install -r requirements.txt
-  python3 network_scanner.py
+  python3 NEScan.py
   ```
 If you got error you might need to upgrade this
   
