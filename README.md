@@ -23,9 +23,6 @@
   
 </div>
 
-
-
-
 ---
 
 NEScan is a lightweight and efficient network scanner designed to identify devices and analyze vulnerabilities across a network. It is suitable for professionals and hobbyists looking to monitor and secure their networks.
@@ -66,6 +63,11 @@ python NEScan.py --target 192.168.1.0/24 --output results.json
 python NEScan.py --target 192.168.1.0/24 --verbose
 ```
 
+## Screenshot
+<div align="center">
+  <img src="https://github.com/awiones/NEScan/blob/main/assets/img/screenshot.png" alt="NEScan Screenshot" width="800px">
+</div>
+
 ## Future Plans
 - **Integration with SIEM Tools**: Enable direct integration with popular Security Information and Event Management tools.
 - **Advanced Vulnerability Scanning**: Add modules for detecting complex vulnerabilities.
@@ -97,4 +99,3 @@ If you encounter any issues or have questions, feel free to:
 ---
 
 Maintained with ❤️ by [awiones](https://github.com/awiones).
-
