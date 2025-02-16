@@ -76,7 +76,7 @@ To contribute:
 3. Commit your changes and submit a pull request.
 
 ## License
-This project is licensed under the [MIT License](https://github.com/awiones/NEScan/blob/main/LICENSE).
+This project is licensed under the [GNU V3,0 License](https://github.com/awiones/NEScan/blob/main/LICENSE).
 
 ## Support
 If you encounter any issues or have questions, feel free to:
