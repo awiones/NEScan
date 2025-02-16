@@ -65,7 +65,7 @@ python NEScan.py --target 192.168.1.0/24 --verbose
 
 ## Screenshot
 <div align="center">
-  <img src="https://github.com/awiones/NEScan/blob/main/assets/img/screenshot.png" alt="NEScan Screenshot" width="800px">
+  <img src="https://github.com/awiones/NEScan/blob/main/assets/img/screenshoot.PNG" alt="NEScan Screenshot" width="800px">
 </div>
 
 ## Future Plans
