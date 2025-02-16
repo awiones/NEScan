@@ -85,7 +85,6 @@ If you encounter any issues or have questions, feel free to:
 
 ## Links
 - [Repository](https://github.com/awiones/NEScan)
-- [Documentation](#)
 - [Issues](https://github.com/awiones/NEScan/issues)
 - [Pull Requests](https://github.com/awiones/NEScan/pulls)
 
