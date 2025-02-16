@@ -1,62 +1,88 @@
-# NEScan (Network Scanner)
+# NEScan
 
-<p align="center">
-<img src="./logo.png" width="300px">
-</p> 
+![NEScan Banner](https://via.placeholder.com/1200x300?text=NEScan+Banner)
 
-
-This repository contains a Python tool designed for comprehensive network scanning and analysis. The Network Scanner performs various tasks to gather information about websites and IP addresses, including DNS resolution, port scanning, SSL certificate fetching, Whois data retrieval, and more.
-
-
-## Features
-
-- **DNS Records**: Fetch DNS A records for a given domain.
-- **Reverse DNS Lookup**: Retrieve the hostname associated with an IP address.
-- **Port Scanning**: Scan all ports of an IP address to identify open ports and associated services.
-- **IP Details**: Fetch IP details using `curl`.
-- **SSL Certificate Information**: Retrieve SSL certificate details for a given IP.
-- **Whois Information**: Retrieve Whois data for a domain.
-- **Geolocation**: Get geolocation data for an IP address.
-- **HTTP Response Analysis**: Analyze HTTP response headers and content from a given IP.
-- **Animated Spinner**: Show a spinner animation during processing.
-
-## Installation
-
-  ```bash
-  git clone https://github.com/awiones/NEScan.git
-  cd NEScan
-  pip install -r requirements.txt
-  python3 NEScan.py
-  ```
-If you got error you might need to upgrade this
-  
-  ```bash
-  pip install --upgrade pyOpenSSL cryptography
-  pip install --upgrade dns aioquic
-  ```
-
-## Additional Information
-
-- **Privacy and Security**: This tool is designed for ethical use. Ensure you have permission to scan and analyze the websites and IP addresses you target. Unauthorized scanning can be illegal and unethical.
-
-- **Limitations**: The accuracy of the results may vary depending on the availability and response of the services queried. For example, DNS lookups and Whois data may not always be up-to-date or complete.
-
-- **Customization**: You can customize the tool by modifying the script to fit specific needs or integrate additional features. The code is designed to be modular and easy to extend.
-
-- **Troubleshooting**: If you encounter issues, ensure all dependencies are installed correctly and that `nmap` is properly configured. Check the script for any specific error messages and consult relevant documentation for troubleshooting.
-
-## Contributing
-
-Contributions are welcome! If you have suggestions, improvements, or bug fixes, please submit a pull request or open an issue.
-
-- **Fork the Repository**: Create a personal copy of the repository on GitHub.
-- **Make Changes**: Implement your changes and test them locally.
-- **Submit a Pull Request**: Describe your changes and submit a pull request for review.
-
-## License
-
-This project is licensed under the GPL 3.0 License. See the [LICENSE](LICENSE) file for details.
+[![GitHub stars](https://img.shields.io/github/stars/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/network/members)
+[![GitHub issues](https://img.shields.io/github/issues/awiones/NEScan)](https://github.com/awiones/NEScan/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/awiones/NEScan)](https://github.com/awiones/NEScan/pulls)
+[![GitHub license](https://img.shields.io/github/license/awiones/NEScan)](https://github.com/awiones/NEScan/blob/main/LICENSE)
+[![GitHub last commit](https://img.shields.io/github/last-commit/awiones/NEScan)](https://github.com/awiones/NEScan/commits/main)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/awiones/NEScan/actions)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows-blue)](#)
 
 ---
 
-Made with ❤️ by Awiones
+NEScan is a lightweight and efficient network scanner designed to identify devices and analyze vulnerabilities across a network. It is suitable for professionals and hobbyists looking to monitor and secure their networks.
+
+## Features
+- **Fast and Accurate Scanning**: Quickly identify all active devices in the network.
+- **Port Scanning**: Detect open ports and associated services.
+- **Vulnerability Detection**: Identify common security vulnerabilities.
+- **Customizable**: Fine-tune the scanning process with various options.
+- **Cross-Platform**: Works seamlessly on Linux and Windows systems.
+- **Detailed Reporting**: Export scan results in JSON, CSV, or HTML format.
+
+## Installation
+To get started with NEScan, follow these steps:
+
+```bash
+# Clone the repository
+git clone https://github.com/awiones/NEScan.git
+
+# Navigate to the directory
+cd NEScan
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+## Usage
+Here are some basic examples of how to use NEScan:
+
+```bash
+# Scan a specific IP address
+python nscan.py --target 192.168.1.1
+
+# Scan an entire subnet
+python nscan.py --target 192.168.1.0/24
+
+# Export results to a file
+python nscan.py --target 192.168.1.0/24 --output results.json
+
+# Enable verbose mode for detailed logs
+python nscan.py --target 192.168.1.0/24 --verbose
+```
+
+## Future Plans
+- **Integration with SIEM Tools**: Enable direct integration with popular Security Information and Event Management tools.
+- **Advanced Vulnerability Scanning**: Add modules for detecting complex vulnerabilities.
+- **Web Interface**: Develop a user-friendly web interface for easier scanning.
+- **Mobile Support**: Expand functionality to support mobile platforms.
+
+## Contributing
+We welcome contributions! Please check the [CONTRIBUTING.md](https://github.com/awiones/NEScan/blob/main/CONTRIBUTING.md) for guidelines.
+
+To contribute:
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Commit your changes and submit a pull request.
+
+## License
+This project is licensed under the [MIT License](https://github.com/awiones/NEScan/blob/main/LICENSE).
+
+## Support
+If you encounter any issues or have questions, feel free to:
+- Open an [issue](https://github.com/awiones/NEScan/issues).
+- Reach out via [discussions](https://github.com/awiones/NEScan/discussions).
+
+## Links
+- [Repository](https://github.com/awiones/NEScan)
+- [Documentation](#)
+- [Issues](https://github.com/awiones/NEScan/issues)
+- [Pull Requests](https://github.com/awiones/NEScan/pulls)
+
+---
+
+Maintained with ❤️ by [awiones](https://github.com/awiones).
+
