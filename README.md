@@ -8,6 +8,7 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/network/members)
+[![GitHub watchers](https://img.shields.io/github/watchers/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/watchers)
 [![GitHub issues](https://img.shields.io/github/issues/awiones/NEScan)](https://github.com/awiones/NEScan/issues)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/awiones/NEScan)](https://github.com/awiones/NEScan/pulls)
 [![GitHub license](https://img.shields.io/github/license/awiones/NEScan)](https://github.com/awiones/NEScan/blob/main/LICENSE)
