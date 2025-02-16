@@ -49,16 +49,16 @@ Here are some basic examples of how to use NEScan:
 
 ```bash
 # Scan a specific IP address
-python nscan.py --target 192.168.1.1
+python NEScan.py --target 192.168.1.1
 
 # Scan an entire subnet
-python nscan.py --target 192.168.1.0/24
+python NEScan.py --target 192.168.1.0/24
 
 # Export results to a file
-python nscan.py --target 192.168.1.0/24 --output results.json
+python NEScan.py --target 192.168.1.0/24 --output results.json
 
 # Enable verbose mode for detailed logs
-python nscan.py --target 192.168.1.0/24 --verbose
+python NEScan.py --target 192.168.1.0/24 --verbose
 ```
 
 ## Future Plans
