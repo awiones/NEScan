@@ -68,12 +68,6 @@ python NEScan.py --target 192.168.1.0/24 --verbose
   <img src="https://github.com/awiones/NEScan/blob/main/assets/img/screenshoot.PNG" alt="NEScan Screenshot" width="800px">
 </div>
 
-## Future Plans
-- **Integration with SIEM Tools**: Enable direct integration with popular Security Information and Event Management tools.
-- **Advanced Vulnerability Scanning**: Add modules for detecting complex vulnerabilities.
-- **Web Interface**: Develop a user-friendly web interface for easier scanning.
-- **Mobile Support**: Expand functionality to support mobile platforms.
-
 ## Contributing
 We welcome contributions! Please check the [CONTRIBUTING.md](https://github.com/awiones/NEScan/blob/main/CONTRIBUTING.md) for guidelines.
 
