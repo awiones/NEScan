@@ -5,18 +5,25 @@
 </div>
 
 <div align="center">
-
-[![GitHub stars](https://img.shields.io/github/stars/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/network/members)
-[![GitHub watchers](https://img.shields.io/github/watchers/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/watchers)
-[![GitHub issues](https://img.shields.io/github/issues/awiones/NEScan)](https://github.com/awiones/NEScan/issues)
-[![GitHub pull requests](https://img.shields.io/github/issues-pr/awiones/NEScan)](https://github.com/awiones/NEScan/pulls)
-[![GitHub license](https://img.shields.io/github/license/awiones/NEScan)](https://github.com/awiones/NEScan/blob/main/LICENSE)
-[![GitHub last commit](https://img.shields.io/github/last-commit/awiones/NEScan)](https://github.com/awiones/NEScan/commits/main)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/awiones/NEScan/actions)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows-blue)](#)
-
+  
+  [![GitHub stars](https://img.shields.io/github/stars/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/stargazers)
+  [![GitHub watchers](https://img.shields.io/github/watchers/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/watchers)
+  [![GitHub forks](https://img.shields.io/github/forks/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/network/members)
+  [![GitHub issues](https://img.shields.io/github/issues/awiones/NEScan)](https://github.com/awiones/NEScan/issues)
+  [![GitHub pull requests](https://img.shields.io/github/issues-pr/awiones/NEScan)](https://github.com/awiones/NEScan/pulls)
+  
 </div>
+
+<div align="center">
+  
+  [![GitHub license](https://img.shields.io/github/license/awiones/NEScan)](https://github.com/awiones/NEScan/blob/main/LICENSE)
+  [![GitHub last commit](https://img.shields.io/github/last-commit/awiones/NEScan)](https://github.com/awiones/NEScan/commits/main)
+  [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/awiones/NEScan/actions)
+  [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows-blue)](#)
+  
+</div>
+
+
 
 
 ---
