@@ -8,8 +8,7 @@ readline==6.2.4.1
 pyOpenSSL==23.3.0
 cryptography==41.0.7
 asyncio==3.4.3
-concurrent-futures==3.0.5
 typing-extensions==4.9.0
 python-dateutil==2.8.2
 tqdm 
-validators 
+validators
