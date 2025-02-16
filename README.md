@@ -26,9 +26,6 @@ NEScan is a lightweight and efficient network scanner designed to identify devic
 - **Fast and Accurate Scanning**: Quickly identify all active devices in the network.
 - **Port Scanning**: Detect open ports and associated services.
 - **Vulnerability Detection**: Identify common security vulnerabilities.
-- **Customizable**: Fine-tune the scanning process with various options.
-- **Cross-Platform**: Works seamlessly on Linux and Windows systems.
-- **Detailed Reporting**: Export scan results in JSON, CSV, or HTML format.
 
 ## Installation
 To get started with NEScan, follow these steps:
