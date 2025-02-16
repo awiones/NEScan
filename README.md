@@ -1,6 +1,10 @@
 # NEScan
 
-![NEScan Banner](https://via.placeholder.com/1200x300?text=NEScan+Banner)
+<div align="center">
+  <img src="https://github.com/awiones/NEScan/blob/main/assets/img/logo1.jpg" alt="NEScan Banner" width="600px">
+</div>
+
+<div align="center">
 
 [![GitHub stars](https://img.shields.io/github/stars/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/network/members)
@@ -10,6 +14,9 @@
 [![GitHub last commit](https://img.shields.io/github/last-commit/awiones/NEScan)](https://github.com/awiones/NEScan/commits/main)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/awiones/NEScan/actions)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows-blue)](#)
+
+</div>
+
 
 ---
 
