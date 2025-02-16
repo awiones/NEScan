@@ -2,8 +2,8 @@
 name: Bug Report
 about: Report issues or unexpected behavior in the project.
 title: ''
-labels: documentation
-assignees: awiones
+labels: ''
+assignees: ''
 
 ---
 
