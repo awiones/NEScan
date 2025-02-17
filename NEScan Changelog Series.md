@@ -44,6 +44,7 @@
 
 ## Version V2.0 Updates
 
+### Features
 - **(+) Added rate limiter using token bucket algorithm for global and per-host rate limiting.**\
   Prevents overwhelming target systems and ensures fair resource usage,  
   especially during high-volume scanning.
