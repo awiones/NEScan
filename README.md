@@ -63,6 +63,9 @@ python NEScan.py --target 192.168.1.0/24 --output results.json
 python NEScan.py --target 192.168.1.0/24 --verbose
 ```
 
+## Don't know how to use the API?
+Check out the discussion: [How to Add API on NEScan](https://github.com/awiones/NEScan/discussions/2).
+
 ## Screenshot
 <div align="center">
   <img src="https://github.com/awiones/NEScan/blob/main/assets/img/screenshoot.PNG" alt="NEScan Screenshot" width="800px">
