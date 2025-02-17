@@ -41,3 +41,80 @@
 ### Nerfs
 - **(-) Default port scan reduced to 1–1000 and common ports**
   - Targets the most relevant ports while saving time and resources.  
+
+## Version V2.0 Updates
+
+- **(+) Added rate limiter using token bucket algorithm for global and per-host rate limiting.**\
+  Prevents overwhelming target systems and ensures fair resource usage,  
+  especially during high-volume scanning.
+
+- **(+) Integrated command-line argument parsing with argparse for improved usability.**\
+  Simplifies input handling by allowing users to specify targets and options  
+  directly via the command line.
+
+- **(+) Added User-Agent rotation support via UserAgentManager.**\
+  Helps avoid detection and potential blocking by rotating User-Agent strings  
+  in outgoing requests.
+
+- **(+) Enhanced UDP port scanning with new probes, response patterns, and common UDP ports scanning.**\
+  Improves the accuracy of UDP scans by using specialized probes and patterns  
+  to reliably detect open UDP ports.
+
+- **(+) Extended TCP scanning with improved service detection using assets.tcp_ports.**\
+  Provides more precise identification of TCP services, ensuring better  
+  vulnerability assessment.
+
+- **(+) Introduced network range scanning support (CIDR) using the ipaddress module.**\
+  Enables scanning of entire networks or subnets, increasing the tool's  
+  versatility for large-scale assessments.
+
+- **(+) Integrated multi-source vulnerability scanning (Vulners, NVD, Shodan) with vulnerability correlation.**\
+  Aggregates vulnerability data from multiple sources to offer a comprehensive  
+  security analysis and better risk insight.
+
+- **(+) Improved result saving and reporting with enhanced JSON output and formatted reports.**\
+  Delivers structured and easily shareable scan results for further analysis  
+  and reporting.
+
+- **(+) Added API integrations for Vulners and NVD to check for CVE vulnerabilities.**\
+  Automatically retrieves known vulnerabilities, providing actionable information  
+  to address potential security issues.
+
+  **API Integration Tutorial (Vulners):**
+
+  1. Go to [vulners.com](https://vulners.com/) and log in.
+  2. Navigate to your profile and click on the **API Keys** tab, or visit [https://vulners.com/userinfo?tab=api-keys](https://vulners.com/userinfo?tab=api-keys).
+  3. Create a new API key with the following settings:
+     - **API Name:** Enter any name you prefer.
+     - **Scope:** Set to `api` (only API access).
+     - **License:** Choose `free` (or your paid option if applicable).
+     - **Bound IP:** Leave this field empty (recommended).
+  4. Copy your new API key and add it when you are about to scan a website/IP using the command `--api-vulners YOUR-API`.
+
+  **API Integration Tutorial (NVD):**
+
+  1. Visit the NVD API request page at [NVD API Request](https://nvd.nist.gov/developers/request-an-api-key).
+  2. Fill in your organization name, email, and a brief description of your intended purpose.
+  3. Submit the form to obtain your API key.
+  4. Copy your new API key and add it when running your scan using the command `--api-nvd YOUR-API_KEY`.
+
+- **(+) Improved TCP scanning functionality.**\
+  Enhances scan reliability and speed by refining the TCP service detection methods.
+
+- **(+) Added UDP scan capability.**\
+  Broadens the scanner's coverage to include UDP protocols, ensuring a more  
+  comprehensive network assessment.
+
+- **(+) Changed message handling: replaced one-by-one input with a custom command format (e.g., python NEScam.py -t example.com).**\
+  Streamlines the user experience by enabling direct command-line input  
+  for faster and more efficient scanning.
+
+- **(+) Added rate-limiting controls.**\
+  Manages request frequency to minimize false positives and reduce the load  
+  on target systems.
+
+### Nerfs
+
+- **(-) Increased scanning overhead due to additional modules and rate limiting may slow down scans in low-latency environments.**\
+  Although these improvements enhance functionality and reliability,  
+  they introduce a trade-off in performance under certain conditions.
