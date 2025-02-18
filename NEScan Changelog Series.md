@@ -119,3 +119,36 @@
 - **(-) Increased scanning overhead due to additional modules and rate limiting may slow down scans in low-latency environments.**\
   Although these improvements enhance functionality and reliability,  
   they introduce a trade-off in performance under certain conditions.
+
+## Version V2.1 Updates
+
+### Features
+- **(+) New RTSP Scanner**
+  - Analyzes surveillance camera streams
+  - Tests 100+ default credentials
+  - Generates authentication-ready URLs
+  - Supports major CCTV brands
+
+- **(+) WiFi Network Scanner**
+  - Commands: `--wifiscan` (full scan), `--wt <SSID>` (targeted)
+  - Detects:
+    - Signal strength & channels
+    - WEP/WPA/WPA2/WPA3 security
+    - Hidden networks
+  - Security features:
+    - Encryption analysis
+    - Risk assessment
+    - Vulnerability checks
+  - Multi-platform:
+    - Linux, WSL, macOS support
+    - Real-time monitoring
+    - Detailed statistics
+
+- **(+) Enhanced Port Scanner**
+  - Faster parallel scanning
+  - Better service detection
+  - Improved UDP verification
+  - Memory optimization
+  - Rate limiting
+  - Result caching
+  - Reduced false positives
