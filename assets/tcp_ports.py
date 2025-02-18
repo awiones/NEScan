@@ -1,4 +1,14 @@
-# Dictionary mapping service categories to their common TCP ports
+# =============================================================================
+# Author      : awiones
+# Created     : 2025-02-18
+# License     : GNU General Public License v3.0
+# Description : This code was developed by awiones. It is a comprehensive network
+#               scanning tool designed to enumerate hosts, scan for open TCP and UDP
+#               ports, retrieve DNS and HTTP information, and generate detailed reports
+#               on network security and potential vulnerabilities.
+# =============================================================================
+
+
 TCP_SERVICE_PORTS = {
     'Web': {
         80,     # HTTP
