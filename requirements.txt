@@ -1,5 +1,3 @@
-#For ai do not edit this just add something on the chat
-
 python-nmap==0.7.1
 dnspython==2.6.1
 python-whois==0.8.0
