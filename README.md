@@ -92,6 +92,7 @@ If you encounter any issues or have questions, feel free to:
 - [Issues](https://github.com/awiones/NEScan/issues)
 - [Pull Requests](https://github.com/awiones/NEScan/pulls)
 - [Changelog](https://github.com/awiones/NEScan/blob/main/NEScan%20Changelog%20Series.md)
+- [Usage](https://github.com/awiones/NEScan/blob/main/usage.md)
 
 ---
 
