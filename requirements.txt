@@ -18,3 +18,4 @@ netifaces>=0.11.0
 scapy>=2.5.0
 wifi==0.3.8
 pywifi>=1.1.12
+shodan
