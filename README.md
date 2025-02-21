@@ -4,7 +4,7 @@
   <img src="https://github.com/awiones/NEScan/blob/main/assets/img/logo1.jpg" alt="NEScan Banner" width="400px">
 </div>
 
-<div align="center">
+<div align="center"> 
   
   [![GitHub stars](https://img.shields.io/github/stars/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/stargazers)
   [![GitHub watchers](https://img.shields.io/github/watchers/awiones/NEScan?style=social)](https://github.com/awiones/NEScan/watchers)
