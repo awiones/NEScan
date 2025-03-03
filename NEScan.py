@@ -92,6 +92,59 @@ init(autoreset=True)
 RESULTS_DIR = pathlib.Path("results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
+class MultipleIPScanner:
+    def __init__(self):
+        self.resolver = dns.resolver.Resolver()
+        self.resolver.timeout = 5
+        self.resolver.lifetime = 5
+
+    def validate_domain(self, domain: str) -> bool:
+        return bool(validators.domain(domain))
+
+    def resolve_domain_ips(self, domain: str) -> List[str]:
+        try:
+            answers = self.resolver.resolve(domain, 'A')
+            return [str(rdata) for rdata in answers]
+        except Exception as e:
+            logging.error(f"Error resolving domain {domain}: {e}")
+            return []
+
+    def display_resolved_ips(self, domain: str, ips: List[str]) -> List[str]:
+        if not ips:
+            print(f"{Fore.RED}[!] No IPs found for {domain}{Style.RESET_ALL}")
+            return []
+        
+        print(f"\n{Fore.CYAN}[*] Found {len(ips)} IP(s) for {domain}:{Style.RESET_ALL}")
+        for i, ip in enumerate(ips, 1):
+            print(f"{i}. {ip}")
+        return ips
+
+    def ask_for_scan(self, ips: List[str]) -> List[str]:
+        if not ips:
+            return []
+            
+        while True:
+            print(f"\n{Fore.YELLOW}Select IPs to scan (comma-separated numbers or 'all'):{Style.RESET_ALL}")
+            try:
+                choice = input("> ").strip().lower()
+                if choice == 'all':
+                    return ips
+                    
+                selected = []
+                for num in choice.split(','):
+                    num = int(num.strip())
+                    if 1 <= num <= len(ips):
+                        selected.append(ips[num-1])
+                    else:
+                        print(f"{Fore.RED}Invalid selection: {num}{Style.RESET_ALL}")
+                        break
+                else:
+                    return selected
+            except ValueError:
+                print(f"{Fore.RED}Invalid input. Please enter numbers or 'all'{Style.RESET_ALL}")
+            except KeyboardInterrupt:
+                return []
+
 # Setup logging to write to results directory
 logging.basicConfig(
     level=logging.INFO,
@@ -169,6 +222,29 @@ class PortScanner:
             'vnc': rb'RFB \d{3}\.\d{3}',
             'dns': rb'BIND|named|dnsmasq'
         }
+        # Add new service probes
+        self.service_probes = {
+            'http': [
+                b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n',
+                b'HEAD / HTTP/1.1\r\nHost: localhost\r\n\r\n'
+            ],
+            'https': [
+                b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n'
+            ],
+            'ftp': [b'USER anonymous\r\n', b'HELP\r\n'],
+            'ssh': [b'SSH-2.0-OpenSSH_8.2p1\r\n'],
+            'smtp': [b'EHLO test\r\n', b'HELO test\r\n'],
+            'pop3': [b'CAPA\r\n', b'USER test\r\n'],
+            'imap': [b'A001 CAPABILITY\r\n'],
+            'telnet': [b'\r\n', b'\x1b[A'],
+            'mysql': [b'\x0c\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'],
+            'redis': [b'PING\r\n', b'INFO\r\n'],
+            'mongodb': [b'\x41\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd4\x07\x00\x00\x00\x00\x00\x00\x61\x64\x6d\x69\x6e\x2e\x24\x63\x6d\x64\x00\x00\x00\x00\x00\xff\xff\xff\xff'],
+            'postgresql': [b'\x00\x00\x00\x08\x04\xd2\x16\x2f'],
+            'dns': [b'\x00\x00\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x07version\x04bind\x00\x00\x10\x00\x03'],
+            'rdp': [b'\x03\x00\x00\x13\x0e\xe0\x00\x00\x00\x00\x00\x01\x00\x08\x00\x03\x00\x00\x00'],
+            'vnc': [b'RFB 003.008\n']
+        }
 
     def scan_ports_parallel(self, ip: str, ports: List[int], protocol: str = 'tcp') -> List[Tuple[int, str, str]]:
         """Scan ports in parallel with efficiency"""
@@ -216,14 +292,17 @@ class PortScanner:
         return port, "closed", "unknown"
 
     def _scan_tcp_port(self, ip: str, port: int) -> Tuple[int, str, str]:
-        """TCP port scanning with better service detection"""
+        """Enhanced TCP port scanning with better service detection"""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(self.timeout)
         
         try:
             result = sock.connect_ex((ip, port))
             if result == 0:
+                banner = self._grab_banner(sock, port)
                 service = self._detect_service(sock, port)
+                if banner and banner != "Banner grab failed":
+                    return port, "open", f"{service} - {banner}"
                 return port, "open", service
             return port, "closed", "unknown"
         finally:
@@ -252,7 +331,7 @@ class PortScanner:
             sock.close()
 
     def _detect_service(self, sock: socket.socket, port: int) -> str:
-        """service detection"""
+        """Enhanced service detection with banner grabbing"""
         cache_key = f"{sock.getpeername()[0]}:{port}"
         if cache_key in self.service_cache:
             return self.service_cache[cache_key]
@@ -260,31 +339,98 @@ class PortScanner:
         try:
             # Try SSL wrap for potential HTTPS
             if port in {443, 8443}:
-                try:
-                    context = ssl.create_default_context()
-                    context.check_hostname = False
-                    context.verify_mode = ssl.CERT_NONE
-                    with context.wrap_socket(sock) as ssl_sock:
-                        return self._get_ssl_service(ssl_sock)
-                except:
-                    pass
+                banner = self._grab_banner(sock, port, ssl_wrap=True)
+            else:
+                banner = self._grab_banner(sock, port)
 
-            # Send probes and analyze response
-            probes = self._get_service_probes(port)
-            for probe in probes:
-                try:
-                    sock.send(probe)
-                    data = sock.recv(1024)
-                    service = self._analyze_service_response(data, port)
-                    if service != "unknown":
-                        self.service_cache[cache_key] = service
-                        return service
-                except:
-                    continue
+            if banner and banner != "Banner grab failed":
+                return banner
 
             return self._get_default_service(port)
         except:
             return self._get_default_service(port)
+
+    def _grab_banner(self, sock: socket.socket, port: int, ssl_wrap: bool = False) -> str:
+        """Enhanced banner grabbing with multiple probes and SSL support"""
+        try:
+            if ssl_wrap:
+                try:
+                    context = ssl.create_default_context()
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+                    sock = context.wrap_socket(sock)
+                except ssl.SSLError:
+                    return "SSL handshake failed"
+
+            # First try reading without sending anything
+            try:
+                banner = sock.recv(1024).decode('utf-8', errors='ignore').strip()
+                if banner:
+                    return banner
+            except socket.timeout:
+                pass
+
+            # Try service-specific probes
+            service = self._get_default_service(port)
+            probes = self.service_probes.get(service, [b'\r\n'])
+            
+            for probe in probes:
+                try:
+                    sock.send(probe)
+                    response = sock.recv(1024)
+                    banner = response.decode('utf-8', errors='ignore').strip()
+                    if banner:
+                        # Extract version information using regex patterns
+                        version_info = self._extract_version_info(banner, service)
+                        if version_info:
+                            return version_info
+                        return banner
+                except (socket.timeout, socket.error):
+                    continue
+
+            return "No banner received"
+        except Exception as e:
+            logging.debug(f"Banner grabbing error: {e}")
+            return "Banner grab failed"
+
+    def _extract_version_info(self, banner: str, service: str) -> str:
+        """Extract version information from banner using regex patterns"""
+        patterns = {
+            'http': r'Server: ([^\r\n]+)',
+            'https': r'Server: ([^\r\n]+)',
+            'ssh': r'SSH-\d+\.\d+-([\w._-]+)',
+            'ftp': r'220[\w\W]*(FileZilla|ProFTPD|Pure-FTPd|vsftpd)[\w\W]*?([\d.]+)',
+            'smtp': r'220[\w\W]*(Postfix|Exim|Sendmail)[\w\W]*?([\d.]+)',
+            'pop3': r'\+OK[\w\W]*(Dovecot|Cyrus)[\w\W]*?([\d.]+)',
+            'imap': r'\*[\w\W]*(Dovecot|Cyrus)[\w\W]*?([\d.]+)',
+            'mysql': r'([.\w-]+)-(\d+\.\d+\.\d+)',
+            'postgresql': r'PostgreSQL ([\d.]+)',
+            'redis': r'redis_version:(\d+\.\d+\.\d+)',
+            'mongodb': r'MongoDB ([\d.]+)',
+            'vnc': r'RFB (\d{3}\.\d{3})',
+            'telnet': r'([.\w-]+) telnetd'
+        }
+
+        if service in patterns:
+            match = re.search(patterns[service], banner)
+            if match:
+                return f"{service} {' '.join(match.groups())}"
+
+        return banner
+
+    def _scan_tcp_port(self, ip: str, port: int) -> Tuple[int, str, str]:
+        """TCP port scanning with better service detection"""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(self.timeout)
+        
+        try:
+            result = sock.connect_ex((ip, port))
+            if result == 0:
+                service = self._detect_service(sock, port)
+                return port, "open", service
+            return port, "closed", "unknown"
+        finally:
+            sock.close()
 
     def _get_service_probes(self, port: int) -> List[bytes]:
         """Get appropriate probes for service detection"""
@@ -405,6 +551,9 @@ class NetworkScanner:
             'User-Agent': 'NEScan/2.1',
             'Accept': 'application/json'
         })
+
+        from assets.bypass import BypassScanner
+        self.bypass_scanner = BypassScanner()
 
     def create_scan_directory(self, domain: str) -> pathlib.Path:
         """Create a timestamped directory for this scan's results"""
@@ -1343,24 +1492,64 @@ class NetworkScanner:
         print(f"║ Report: {str(report_file):<58} ║")
         print(f"║ Details: {str(scan_dir):<57} ║")
         print(f"╚{'═' * 68}╝{Style.RESET_ALL}") 
-    def scan_network(self, target: str, tcp_only: bool = False, udp_only: bool = False, rtsp_scan: bool = False, rtsp_port: int = 554, rtsp_depth: int = 1, limit: Optional[int] = None) -> List[Dict]:
+    def scan_network(self, target: str, tcp_only: bool = False, udp_only: bool = False, rtsp_scan: bool = False, rtsp_port: int = 554, rtsp_depth: int = 1, bypass: bool = False, limit: Optional[int] = None) -> List[Dict]:
         """Scan a network range or single IP with protocol options"""
         try:
-            # Check if target is a network range
+            if bypass and validators.domain(target):
+                print(f"\n{Fore.YELLOW}[*] Attempting to bypass CDN/WAF...{Style.RESET_ALL}")
+                origin_ip = self.bypass_scanner.find_origin_ip(target)
+                if origin_ip:
+                    print(f"{Fore.GREEN}[+] Found origin IP: {origin_ip}{Style.RESET_ALL}")
+                    # Only scan the origin IP when bypass is successful
+                    result = self.scan_single_target(origin_ip, tcp_only, udp_only, rtsp_scan, rtsp_port, rtsp_depth)
+                    if result:
+                        result['domain'] = target  # Keep original domain for reference
+                        result['origin_ip'] = origin_ip
+                        result['bypassed'] = True
+                        return [result]
+                else:
+                    print(f"{Fore.RED}[!] Could not find origin IP, falling back to normal scan{Style.RESET_ALL}")
+
+            # Initialize MultipleIPScanner for domain resolution
+            multiple_scanner = MultipleIPScanner()
+
+            # Check if target is a domain name that needs resolution
+            if multiple_scanner.validate_domain(target):
+                print(f"\n{Fore.CYAN}[*] Resolving IPs for domain: {target}{Style.RESET_ALL}")
+                resolved_ips = multiple_scanner.resolve_domain_ips(target)
+                all_ips = multiple_scanner.display_resolved_ips(target, resolved_ips)
+                
+                if all_ips:
+                    # Ask user which IPs to scan
+                    selected_ips = multiple_scanner.ask_for_scan(all_ips)
+                    if selected_ips:
+                        results = []
+                        for ip in tqdm(selected_ips, desc="Scanning IPs"):
+                            result = self.scan_single_target(ip, tcp_only, udp_only, rtsp_scan, rtsp_port, rtsp_depth)
+                            if result:
+                                results.append(result)
+                            if limit and len(results) >= limit:
+                                break
+                        return results
+                    return [{'error': 'No IPs selected for scanning'}]
+                return [{'error': 'No IPs found for the domain'}]
+
+            # Network/IP scanning logic
             if '/' in target:
                 network = ipaddress.ip_network(target, strict=False)
                 results = []
                 for ip in tqdm(network.hosts(), desc="Scanning network"):
                     result = self.scan_single_target(str(ip), tcp_only, udp_only, rtsp_scan, rtsp_port, rtsp_depth)
-                    if result:  # Only append if we got valid results
+                    if result:
                         results.append(result)
                     if limit and len(results) >= limit:
                         break
                 return results if results else [{'error': 'No valid results found'}]
             else:
-                # Single IP or domain scan
+                # Single IP scan
                 result = self.scan_single_target(target, tcp_only, udp_only, rtsp_scan, rtsp_port, rtsp_depth)
                 return [result] if result else [{'error': f'Scan failed for target: {target}'}]
+
         except ValueError as e:
             logging.error(f"Invalid target format: {e}")
             return [{'error': f'Invalid target format: {str(e)}'}]
@@ -1372,6 +1561,9 @@ class NetworkScanner:
                           rtsp_scan: bool = False, rtsp_port: int = 554, rtsp_depth: int = 1) -> Dict:
         """single target scanning with better IP information"""
         try:
+            # Set bypass flag for IP details collection
+            self._current_scan_is_bypassed = getattr(self, 'bypass_scanner', None) is not None
+
             # Initialize scan results
             scan_results = {
                 'timestamp': datetime.now().isoformat(),
@@ -1459,6 +1651,10 @@ class NetworkScanner:
         except Exception as e:
             logging.error(f"Error scanning {target}: {e}")
             return {'error': f'Scan failed for {target}: {str(e)}'}
+
+        finally:
+            # Reset bypass flag
+            self._current_scan_is_bypassed = False
 
     def save_results(self, results: List[Dict], output_file: str) -> None:
         """Save scan results to a file in the results/reports directory using target name"""
@@ -2042,7 +2238,10 @@ class NetworkScanner:
                 'geo_location': {},
                 'asn_info': {},
                 'security_info': {},
-                'cdn_info': {},
+                'cdn_info': {
+                    'detected': False,
+                    'provider': None
+                },
                 'reverse_dns': [],
                 'organization': None
             }
@@ -2057,7 +2256,7 @@ class NetworkScanner:
             # Get IP geolocation and ASN info
             try:
                 geo_response = self.ip_info_session.get(f'https://ipapi.co/{ip}/json/')
-                if geo_response.status_code == 200:
+                if (geo_response.status_code == 200):
                     geo_data = geo_response.json()
                     ip_details['geo_location'] = {
                         'country': geo_data.get('country_name'),
@@ -2088,14 +2287,16 @@ class NetworkScanner:
                 'KeyCDN': r'keycdn'
             }
 
-            if ip_details['organization']:
-                for cdn, pattern in cdn_patterns.items():
-                    if re.search(pattern, ip_details['organization'].lower()):
-                        ip_details['cdn_info'] = {
-                            'detected': True,
-                            'provider': cdn
-                        }
-                        break
+            # Skip CDN check if this is a bypassed origin IP
+            if not hasattr(self, '_current_scan_is_bypassed') or not self._current_scan_is_bypassed:
+                if ip_details['organization']:
+                    for cdn, pattern in cdn_patterns.items():
+                        if re.search(pattern, ip_details['organization'].lower()):
+                            ip_details['cdn_info'] = {
+                                'detected': True,
+                                'provider': cdn
+                            }
+                            break
 
             # Get additional reverse DNS records
             try:
@@ -2259,7 +2460,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(
         description=f'''{Fore.CYAN}
 █▄░█ █▀▀ █▀ █▀▀ ▄▀█ █▄░█
-█░▀█ ██▄ ▄█ █▄▄ █▀█ █░▀█  v2.1
+█░▀█ ██▄ ▄█ █▄▄ █▀█ █░▀█  v2.2
 {Style.RESET_ALL}
 Network Enumeration Scanner - A powerful network reconnaissance tool''',
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -2365,6 +2566,13 @@ Network Enumeration Scanner - A powerful network reconnaissance tool''',
         '--wt',
         metavar='SSID',
         help='Scan a specific WiFi network by SSID'
+    )
+
+    # Add bypass option
+    parser.add_argument(
+        '--bypass',
+        action='store_true',
+        help='Attempt to bypass CDN/WAF for direct scanning'
     )
 
     if len(sys.argv) == 1:
@@ -2514,6 +2722,71 @@ def handle_wifi_scan(args) -> None:
         print("    - WiFi hardware is available and enabled")
         print(f"    - Required packages are installed (wireless-tools){Style.RESET_ALL}")
 
+def print_usage_hint(error_type: str, provided_args: list = None) -> None:
+    """Print helpful usage hints based on error type"""
+    print(f"\n{Fore.RED}[!] Usage Error: {Style.RESET_ALL}")
+    
+    hints = {
+        'rtsp_no_target': f"""
+{Fore.YELLOW}RTSP scan requires a target. Use:
+{Fore.CYAN}python NEScan.py --rtsp-scan --target <IP/HOSTNAME> {Fore.GREEN}[options]
+{Fore.YELLOW}Example:
+{Fore.CYAN}python NEScan.py --rtsp-scan --target 192.168.1.100 --rtsp-port 554{Style.RESET_ALL}
+        """,
+        
+        'no_target': f"""
+{Fore.YELLOW}A target is required. Use:
+{Fore.CYAN}python NEScan.py --target <IP/HOSTNAME/NETWORK> {Fore.GREEN}[options]
+{Fore.YELLOW}Examples:
+{Fore.CYAN}python NEScan.py --target 192.168.1.100
+python NEScan.py --target example.com
+python NEScan.py --target 192.168.1.0/24{Style.RESET_ALL}
+        """,
+        
+        'invalid_port': f"""
+{Fore.YELLOW}Invalid port specified. Port must be between 1-65535. Use:
+{Fore.CYAN}python NEScan.py --target <IP> --rtsp-port <PORT>
+{Fore.YELLOW}Example:
+{Fore.CYAN}python NEScan.py --target 192.168.1.100 --rtsp-port 554{Style.RESET_ALL}
+        """,
+        
+        'api_key_format': f"""
+{Fore.YELLOW}Invalid API key format. Use:
+{Fore.CYAN}python NEScan.py --target <IP> --api-vulners <KEY> --api-nvd <KEY>
+{Fore.YELLOW}Example:
+{Fore.CYAN}python NEScan.py --target example.com --api-vulners YOUR-KEY --api-nvd YOUR-KEY{Style.RESET_ALL}
+        """,
+        
+        'wifi_sudo': f"""
+{Fore.YELLOW}WiFi scanning requires root privileges. Use:
+{Fore.CYAN}sudo python3 NEScan.py --wifiscan
+{Fore.YELLOW}or for specific SSID:
+{Fore.CYAN}sudo python3 NEScan.py --wt <SSID>{Style.RESET_ALL}
+        """,
+        
+        'invalid_range': f"""
+{Fore.YELLOW}Invalid IP range format. Use CIDR notation:
+{Fore.CYAN}python NEScan.py --target <NETWORK>/<MASK>
+{Fore.YELLOW}Examples:
+{Fore.CYAN}python NEScan.py --target 192.168.1.0/24
+python NEScan.py --target 10.0.0.0/16{Style.RESET_ALL}
+        """,
+        
+        'general': f"""
+{Fore.YELLOW}For complete usage information, use:
+{Fore.CYAN}python NEScan.py --help
+
+{Fore.YELLOW}Common usage patterns:
+{Fore.CYAN}1. Basic scan:      python NEScan.py --target <IP/DOMAIN>
+2. TCP only:        python NEScan.py --target <IP/DOMAIN> --tcp
+3. RTSP scan:       python NEScan.py --target <IP/DOMAIN> --rtsp-scan
+4. WiFi scan:       sudo python3 NEScan.py --wifiscan
+5. Network range:   python NEScan.py --target 192.168.1.0/24{Style.RESET_ALL}
+        """
+    }
+    
+    print(hints.get(error_type, hints['general']))
+
 def main():
     try:
         # Check for required dependencies before starting
@@ -2595,6 +2868,31 @@ def main():
 
         print(f"\n{Fore.YELLOW}[+] Starting scan...{Style.RESET_ALL}")
         
+        # Add usage hints for common errors
+        if args.rtsp_scan and not args.target:
+            print_usage_hint('rtsp_no_target')
+            sys.exit(1)
+            
+        if args.rtsp_port and (args.rtsp_port < 1 or args.rtsp_port > 65535):
+            print_usage_hint('invalid_port')
+            sys.exit(1)
+            
+        if (args.api_vulners and len(args.api_vulners) < 32) or \
+           (args.api_nvd and len(args.api_nvd) < 32):
+            print_usage_hint('api_key_format')
+            sys.exit(1)
+            
+        if (args.wifiscan or args.wt) and os.geteuid() != 0:
+            print_usage_hint('wifi_sudo')
+            sys.exit(1)
+            
+        if args.target and '/' in args.target:
+            try:
+                ipaddress.ip_network(args.target)
+            except ValueError:
+                print_usage_hint('invalid_range')
+                sys.exit(1)
+
         results = scanner.scan_network(
             args.target,
             tcp_only=args.tcp,
@@ -2602,6 +2900,7 @@ def main():
             rtsp_scan=args.rtsp_scan,
             rtsp_port=args.rtsp_port,
             rtsp_depth=args.rtsp_depth,
+            bypass=args.bypass,
             limit=args.limit
         )
         
@@ -2617,10 +2916,12 @@ def main():
             
     except KeyboardInterrupt:
         print(f"\n{Fore.YELLOW}[!] Scan interrupted by user{Style.RESET_ALL}")
+        print_usage_hint('general')
         sys.exit(1)
     except Exception as e:
         logging.error(f"Scan failed: {e}")
         print(f"\n{Fore.RED}[!] Scan failed: {str(e)}{Style.RESET_ALL}")
+        print_usage_hint('general')
         sys.exit(1)
 
 if __name__ == "__main__":

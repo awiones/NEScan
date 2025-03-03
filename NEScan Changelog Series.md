@@ -1,50 +1,53 @@
 # NEScan Changelog
 
-## Version V1.0.0 Features  
+## Version V1.0.0 Features
+
 ### Features
-- **(+) Basic version management** 
-- **(+) Styled ASCII header and spinner animation**  
-- **(+) IP resolution and full port scanning**  
-- **(+) Fetching DNS, SSL, HTTP response, and WHOIS details**  
-- **(+) Reverse DNS lookup**  
-- **(+) Error handling for failed tasks**  
-- **(+) Full port scanning (all 65,535 ports)**  
+
+- **(+) Basic version management**
+- **(+) Styled ASCII header and spinner animation**
+- **(+) IP resolution and full port scanning**
+- **(+) Fetching DNS, SSL, HTTP response, and WHOIS details**
+- **(+) Reverse DNS lookup**
+- **(+) Error handling for failed tasks**
+- **(+) Full port scanning (all 65,535 ports)**
 
 ---
 
-## Version V1.5 Updates  
+## Version V1.5 Updates
 
 ### Features
+
 - **(+) Multithreading for faster scans**
-  - Reduces scan time by processing multiple ports simultaneously.  
+  - Reduces scan time by processing multiple ports simultaneously.
 - **(+) Organized results into directories**
-  - Keeps logs, reports, and scans neatly separated for better usability.  
+  - Keeps logs, reports, and scans neatly separated for better usability.
 - **(+) Added detailed logging**
-  - Provides a comprehensive record of scan activities and errors.  
+  - Provides a comprehensive record of scan activities and errors.
 - **(+) Domain validation with `validators` library**
-  - Prevents invalid domain inputs.  
+  - Prevents invalid domain inputs.
 - **(+) Real-time progress bars**
-  - Enhances the user experience with clear feedback on task completion.  
+  - Enhances the user experience with clear feedback on task completion.
 - **(+) Risk-level categorization for open ports**
-  - Highlights risky open ports like RDP (3389) or FTP (21) for immediate attention.  
+  - Highlights risky open ports like RDP (3389) or FTP (21) for immediate attention.
 - **(+) Enhanced SSL analysis using OpenSSL**
-  - Identifies SSL-related vulnerabilities, like expired certificates.  
+  - Identifies SSL-related vulnerabilities, like expired certificates.
 - **(+) Generates detailed reports with risk scoring**
-  - Summarizes findings and ranks risks for better decision-making.  
+  - Summarizes findings and ranks risks for better decision-making.
 - **(+) Identifies security issues and recommends fixes**
-  - Provides actionable advice for mitigating detected risks.  
+  - Provides actionable advice for mitigating detected risks.
 - **(+) Supports multiple DNS record types (A, MX, NS, TXT)**
-  - Offers a deeper understanding of a domain's configuration.  
+  - Offers a deeper understanding of a domain's configuration.
 - **(+) Saves results in JSON format**
-  - Allows integration with other tools or further automation.  
+  - Allows integration with other tools or further automation.
 
 ### Nerfs
+
 - **(-) Default port scan reduced to 1–1000 and common ports**
-  - Targets the most relevant ports while saving time and resources.  
+  - Targets the most relevant ports while saving time and resources.
 
 ## Version V2.0 Updates
 
-### Features
 - **(+) Added rate limiter using token bucket algorithm for global and per-host rate limiting.**\
   Prevents overwhelming target systems and ensures fair resource usage,  
   especially during high-volume scanning.
@@ -123,13 +126,16 @@
 ## Version V2.1 Updates
 
 ### Features
+
 - **(+) New RTSP Scanner**
+
   - Analyzes surveillance camera streams
   - Tests 100+ default credentials
   - Generates authentication-ready URLs
   - Supports major CCTV brands
 
 - **(+) WiFi Network Scanner**
+
   - Commands: `--wifiscan` (full scan), `--wt <SSID>` (targeted)
   - Detects:
     - Signal strength & channels
@@ -152,3 +158,36 @@
   - Rate limiting
   - Result caching
   - Reduced false positives
+
+### Nerfs
+
+## Version V2.2 Updates
+
+### Features
+
+- **(+) Multiple IP Scanning**
+
+  - When you input a domain (e.g., google.com), it will:
+    - Resolve direct IP addresses
+    - Find DNS A and AAAA records
+    - Discover mail server IPs
+    - Check common subdomains
+    - Find related IPs through reverse DNS
+  - All discovered IPs are displayed categorized by their source
+  - Interactive IP selection:
+    - Option to scan all discovered IPs (Y)
+    - Option to select specific IPs to scan (N)
+    - If N is selected, users can choose specific IPs from the list
+  - Scanning proceeds with selected IPs
+
+- **(+) CDN/WAF Bypass Capabilities**
+  - Detects common CDN providers (Cloudflare, Akamai, etc.)
+  - Multiple bypass techniques:
+    - Historical DNS records analysis
+    - Origin IP discovery through SSL certificates
+    - Subdomain enumeration
+    - Development/staging server detection
+    - Mail server correlation
+  - Uses the `--bypass` flag to attempt CDN/WAF bypass
+  - Provides detailed feedback on bypass attempts
+  - Automatically uses discovered origin IPs for scanning

@@ -488,7 +488,7 @@ def format_rtsp_results(results: List[Dict]) -> str:
     from colorama import Fore, Style
     
     if not results:
-        return f"{Fore.YELLOW}No RTSP streams found. Get lucky next time!{Style.RESET_ALL}"
+        return f"{Fore.YELLOW}Sorry get lucky next time.{Style.RESET_ALL}"
     
     output = []
     output.append(f"\n{Fore.CYAN}[*] RTSP Scan Results:{Style.RESET_ALL}")
