@@ -181,6 +181,7 @@
   - Scanning proceeds with selected IPs
 
 - **(+) CDN/WAF Bypass Capabilities**
+
   - Detects common CDN providers (Cloudflare, Akamai, etc.)
   - Multiple bypass techniques:
     - Historical DNS records analysis
@@ -191,3 +192,30 @@
   - Uses the `--bypass` flag to attempt CDN/WAF bypass
   - Provides detailed feedback on bypass attempts
   - Automatically uses discovered origin IPs for scanning
+
+- **(+) Enhanced IP Information Display**
+
+  - Clean, organized output format
+  - Shows detailed geolocation data
+  - Displays ASN and ISP information
+  - Network organization details
+  - Timezone information
+  - Coordinates data
+  - Automatic display of IP info before port scanning
+
+- **(+) Improved Service Detection**
+  - Better banner grabbing for service identification
+  - Enhanced protocol detection
+  - More accurate service version detection
+  - Custom probes for specific services
+
+### Nerfs
+
+- **(-) Removed color formatting from IP information display**
+
+  - Makes output cleaner and more readable
+  - Better compatibility with log files and redirected output
+
+- **(-) Simplified banner display**
+  - Removed unnecessary decorative elements
+  - Focus on essential information
