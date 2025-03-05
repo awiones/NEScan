@@ -479,6 +479,10 @@ class PortScanner:
             return "unknown"
 
 # Update NetworkScanner class to use the new PortScanner
+from assets.ip_scanner import scan_target
+from assets.whois import WhoisInfo
+from assets.bypass import BypassScanner
+
 class NetworkScanner:
     def __init__(self, verbose=False, random_ua=False, vulners_api=None, nvd_api=None, shodan_api=None,
                  rate_limit_global=100, rate_limit_host=10):
@@ -552,8 +556,9 @@ class NetworkScanner:
             'Accept': 'application/json'
         })
 
-        from assets.bypass import BypassScanner
+        self.whois_scanner = WhoisInfo()
         self.bypass_scanner = BypassScanner()
+        self.force_scan = False  # Add this line
 
     def create_scan_directory(self, domain: str) -> pathlib.Path:
         """Create a timestamped directory for this scan's results"""
@@ -908,7 +913,7 @@ class NetworkScanner:
             
             # Check for important security headers
             for header, description in important_headers.items():
-                if header in headers:
+                if (header in headers) and (header.lower() != 'content-security-policy'):
                     security_headers['headers'][header] = headers[header]
                     security_headers['security_score'] += 1
                 else:
@@ -1093,6 +1098,7 @@ class NetworkScanner:
     def _format_headers(self, headers: Dict) -> str:
         if not headers:
             return "No HTTP headers found"
+        # Fix the string formatting
         return "\n".join([f"- {k}: {v}" for k, v in headers.items()])
 
     def _format_section_header(self, title: str) -> str:
@@ -1126,294 +1132,19 @@ class NetworkScanner:
             'Total Open Ports': len(open_ports),
             'High-Risk Ports': sum(1 for port, _ in open_ports if port in HIGH_RISK_TCP_PORTS),
             'DNS Records': len(dns_records),
-            'Security Headers': sum(1 for h in headers if h.lower() in {
-                'strict-transport-security',
-                'x-xss-protection',
-                'x-frame-options',
-                'x-content-type-options'
-            }),
-            'Vulnerabilities': len(vulns.get('findings', [])),
-            'Critical Vulns': sum(1 for v in vulns.get('findings', []) if v.get('cvss', 0) >= 9.0)
+            'Security Headers': len([h for h in headers if h.lower().startswith('strict-transport-security')])
         }
 
-        # Generate security analysis
-        security_analysis = self.analyze_security_issues(scan_results)
-        risk_score = self._calculate_risk_score(security_analysis, stats)
-        
-        report = f"""
-{Fore.CYAN}╔{'═'*68}╗
-║ {'NETWORK SCAN REPORT':^66} ║
-╚{'═'*68}╝{Style.RESET_ALL}
-
-{Fore.YELLOW}Target Information:{Style.RESET_ALL}
-• Domain: {domain}
-• IP Address: {scan_results.get('ip', 'N/A')}
-• Scan Time: {timestamp}
-• Risk Score: {self._format_risk_score(risk_score)}
-
-{self._format_section_header('SCAN STATISTICS')}
-• Open Ports: {stats['Total Open Ports']}
-• High-Risk Ports: {stats['High-Risk Ports']}
-• DNS Records Found: {stats['DNS Records']}
-• Security Headers: {stats['Security Headers']}
-• Vulnerabilities: {stats['Vulnerabilities']} (Critical: {stats['Critical Vulns']})
-
-{self._format_section_header('PORT SCAN RESULTS')}
-{self._format_port_scan_results(open_ports)}
-
-{self._format_section_header('VULNERABILITY ASSESSMENT')}
-{self._format_vulnerability_results(vulns)}
-
-{self._format_section_header('DNS INFORMATION')}
-{self._format_dns_info(dns_records)}
-
-{self._format_section_header('SECURITY ANALYSIS')}
-{self._format_security_analysis(security_analysis)}
-
-{self._format_section_header('RECOMMENDATIONS')}
-{self._generate_recommendations(security_analysis, stats)}
-"""
-        return report
-
-    def _format_port_scan_results(self, ports: List[Tuple[int, str]]) -> str:
-        """port scan results formatting with detailed service info and security context"""
-        if not ports:
-            return f"{Fore.GREEN}[✓] No open ports found{Style.RESET_ALL}"
-        
-        result = []
-        tcp_ports = []
-        udp_ports = []
-        
-        # risk categories with descriptions and countermeasures
-        risk_categories = {
-            'CRITICAL': {
-                'icon': f"{Fore.RED}⚠",
-                'desc': "Known vulnerabilities or dangerous services",
-                'advice': "Immediate action required - Consider disabling or restricting access"
-            },
-            'HIGH': {
-                'icon': f"{Fore.RED}!",
-                'desc': "High-risk services requiring attention",
-                'advice': "Review access controls and implement additional security measures"
-            },
-            'MEDIUM': {
-                'icon': f"{Fore.YELLOW}•",
-                'desc': "Standard services requiring monitoring",
-                'advice': "Monitor and ensure proper configuration"
-            },
-            'LOW': {
-                'icon': f"{Fore.GREEN}✓",
-                'desc': "Low-risk or well-secured services",
-                'advice': "Regular maintenance and updates recommended"
-            }
-        }
-        
-        # Header with scan info
-        result.append(f"\n{Fore.CYAN}┌{'─' * 72}┐")
-        result.append(f"│ {'PORT SCAN REPORT':^70} │")
-        result.append(f"├{'─' * 72}┤")
-        result.append(f"│ {' '*2}Risk Levels and Security Recommendations{' '*31} │")
-        result.append(f"├{'─' * 72}┤")
-        
-        # Add risk level explanations
-        for risk, info in risk_categories.items():
-            result.append(f"│ {info['icon']} {risk:<8} - {info['desc']:<52} │{Style.RESET_ALL}")
-        result.append(f"└{'─' * 72}┘\n")
-
-        # Categorize and analyze ports
-        for port, service in sorted(ports):
-            service_info = {
-                'port': port,
-                'raw_service': service,
-                'detected_service': get_tcp_service_name(port),
-                'protocol': 'TCP' if port in COMMON_TCP_PORTS else 'UDP' if port in COMMON_UDP_PORTS else 'UNKNOWN',
-                'risk_level': 'CRITICAL' if port in HIGH_RISK_TCP_PORTS else 
-                             'HIGH' if is_tcp_high_risk_port(port) else
-                             'MEDIUM' if is_tcp_common_port(port) else 'LOW'
-            }
-            
-            if service_info['protocol'] == 'TCP':
-                tcp_ports.append(service_info)
-            elif service_info['protocol'] == 'UDP':
-                udp_ports.append(service_info)
-
-        # Format TCP ports with details
-        if tcp_ports:
-            result.append(f"{Fore.CYAN}TCP SERVICES DETECTED:{Style.RESET_ALL}")
-            result.append(f"┌{'─' * 72}┐")
-            result.append(f"│ {'Port':<6}│ {'Service':<15}│ {'Version/Details':<30}│ {'Risk':<15}│")
-            result.append(f"├{'─' * 72}┤")
-            
-            for port_info in tcp_ports:
-                risk_info = risk_categories[port_info['risk_level']]
-                service_details = port_info['raw_service'] if port_info['raw_service'] != "unknown" else ""
-                service_name = port_info['detected_service']
-                
-                # Main port entry
-                result.append(
-                    f"│ {port_info['port']:<6}│ "
-                    f"{service_name[:15]:<15}│ "
-                    f"{service_details[:30]:<30}│ "
-                    f"{risk_info['icon']} {port_info['risk_level']:<12}│{Style.RESET_ALL}"
-                )
-                
-                # Add security recommendation if high risk
-                if port_info['risk_level'] in ['CRITICAL', 'HIGH']:
-                    result.append(f"├{'─' * 72}┤")
-                    result.append(f"│ {Fore.YELLOW}▶ Recommendation:{Style.RESET_ALL} {risk_info['advice']:<56} │")
-            
-            result.append(f"└{'─' * 72}┘\n")
-
-        # Format UDP ports with details
-        if udp_ports:
-            result.append(f"{Fore.CYAN}UDP SERVICES DETECTED:{Style.RESET_ALL}")
-            result.append(f"┌{'─' * 72}┐")
-            result.append(f"│ {'Port':<6}│ {'Service':<15}│ {'Version/Details':<30}│ {'Risk':<15}│")
-            result.append(f"├{'─' * 72}┤")
-            
-            for port_info in udp_ports:
-                risk_info = risk_categories[port_info['risk_level']]
-                service_details = port_info['raw_service'] if port_info['raw_service'] != "unknown" else ""
-                service_name = port_info['detected_service']
-                
-                result.append(
-                    f"│ {port_info['port']:<6}│ "
-                    f"{service_name[:15]:<15}│ "
-                    f"{service_details[:30]:<30}│ "
-                    f"{risk_info['icon']} {port_info['risk_level']:<12}│{Style.RESET_ALL}"
-                )
-                
-                if port_info['risk_level'] in ['CRITICAL', 'HIGH']:
-                    result.append(f"├{'─' * 72}┤")
-                    result.append(f"│ {Fore.YELLOW}▶ Recommendation:{Style.RESET_ALL} {risk_info['advice']:<56} │")
-            
-            result.append(f"└{'─' * 72}┘\n")
-
-        # Add comprehensive statistics
-        total_ports = len(tcp_ports) + len(udp_ports)
-        risk_stats = Counter(p['risk_level'] for p in tcp_ports + udp_ports)
-        
-        result.append(f"{Fore.CYAN}SCAN STATISTICS:{Style.RESET_ALL}")
-        result.append(f"┌{'─' * 72}┐")
-        result.append(f"│ {'Services Found:':<70} │")
-        result.append(f"│ • Total Open Ports: {total_ports:<56} │")
-        result.append(f"│ • TCP Services: {len(tcp_ports):<57} │")
-        result.append(f"│ • UDP Services: {len(udp_ports):<57} │")
-        result.append(f"├{'─' * 72}┤")
-        result.append(f"│ {'Risk Distribution:':<70} │")
-        
-        for risk_level, count in risk_stats.items():
-            icon = risk_categories[risk_level]['icon']
-            result.append(f"│ {icon} {risk_level}: {count:<62}│{Style.RESET_ALL}")
-        
-        if risk_stats.get('CRITICAL', 0) > 0 or risk_stats.get('HIGH', 0) > 0:
-            result.append(f"├{'─' * 72}┤")
-            result.append(f"│ {Fore.RED}! Security Alert: High-risk services detected{' '*37}│{Style.RESET_ALL}")
-        
-        result.append(f"└{'─' * 72}┘")
-
-        return '\n'.join(result)
-
-    def _get_port_risk_level(self, port: int) -> str:
-        """Get port risk level using the new TCP risk definitions"""
-        if is_tcp_high_risk_port(port):
-            return 'HIGH'
-        elif is_tcp_common_port(port):
-            return 'MEDIUM'
-        return 'LOW'
-
-    def _calculate_risk_score(self, security_analysis: Dict, stats: Dict) -> float:
-        score = 100.0  # Start with perfect score
-        
-        # Deduct points for security issues
-        deductions = {
-            'critical': 25.0,
-            'high': 15.0,
-            'medium': 10.0,
-            'low': 5.0
-        }
-        
-        for severity, issues in security_analysis.items():
-            score -= len(issues) * deductions[severity]
-        
-        # Deduct for high-risk ports
-        score -= stats['High-Risk Ports'] * 10.0
-        
-        # Bonus for security headers
-        score += stats['Security Headers'] * 5.0
-        
-        return max(0.0, min(100.0, score))
-
-    def _format_risk_score(self, score: float) -> str:
-        color = (Fore.RED if score < 50 else 
-                Fore.YELLOW if score < 80 else 
-                Fore.GREEN)
-        bars = int(score / 10)
-        bar_str = f"[{'█' * bars}{'░' * (10-bars)}]"
-        return f"{color}{bar_str} {score:.1f}/100{Style.RESET_ALL}"
-
-    def _generate_recommendations(self, security_analysis: Dict, stats: Dict) -> str:
-        recommendations = []
-        
-        if security_analysis['critical'] or security_analysis['high']:
-            recommendations.append(f"{Fore.RED}[!] URGENT ACTIONS REQUIRED:{Style.RESET_ALL}")
-            for issue in security_analysis['critical'] + security_analysis['high']:
-                recommendations.append(f"{Fore.RED}▶ {issue}{Style.RESET_ALL}")
-        
-        if stats['High-Risk Ports'] > 0:
-            recommendations.append(f"\n{Fore.YELLOW}[!] PORT SECURITY:{Style.RESET_ALL}")
-            recommendations.append(f"{Fore.YELLOW}▶ Consider closing or restricting access to high-risk ports")
-            recommendations.append(f"▶ Implement firewall rules to limit access to necessary IPs only{Style.RESET_ALL}")
-        
-        if stats['Security Headers'] < 4:
-            recommendations.append(f"\n{Fore.YELLOW}[!] WEB SECURITY:{Style.RESET_ALL}")
-            recommendations.append(f"{Fore.YELLOW}▶ Implement missing security headers")
-            recommendations.append(f"▶ Enable HSTS for HTTPS enforcement{Style.RESET_ALL}")
-        
-        return '\n'.join(recommendations) if recommendations else f"{Fore.GREEN}[✓] No immediate actions required.{Style.RESET_ALL}"
-
-    def _format_dns_info(self, records: List[str]) -> str:
-        if not records:
-            return f"{Fore.YELLOW}[!] No DNS records found{Style.RESET_ALL}"
-        
-        formatted = []
-        record_types = Counter(r.split()[3] for r in records)
-        
-        # Summary box
-        formatted.append(f"{Fore.BLUE}┌{'─' * 68}┐")
-        formatted.append(f"{Fore.BLUE}│ {'Record Distribution':^66} │{Style.RESET_ALL}")
-        formatted.append(f"{Fore.BLUE}├{'─' * 68}┤{Style.RESET_ALL}")
-        
-        for rtype, count in record_types.items():
-            formatted.append(f"{Fore.BLUE}│ {Style.RESET_ALL}{rtype:<15}: {count:>3} records {' ' * 43}{Fore.BLUE}│{Style.RESET_ALL}")
-        
-        formatted.append(f"{Fore.BLUE}└{'─' * 68}┘{Style.RESET_ALL}")
-        
-        # Detailed records
-        formatted.append(f"\n{Fore.YELLOW}Detailed Records:{Style.RESET_ALL}")
-        for record in records:
-            formatted.append(f"▶ {record}")
-        
-        return '\n'.join(formatted)
-
-    def analyze_security_issues(self, scan_results: Dict) -> Dict:
-        """Analyze scan results for security issues"""
+        # Initialize issues dictionary
         issues = {
-            'critical': [],
             'high': [],
             'medium': [],
             'low': []
         }
-        
-        # Check for common security issues
-        open_ports = scan_results.get('open_ports', [])
-        for port, service in open_ports:
-            if port in {21, 23, 3389}:
-                issues['high'].append(f"Potentially dangerous port {port} ({service}) is open")
-            elif port in {80, 443}:
-                if not any(h.lower().startswith('strict-transport-security') 
-                          for h in scan_results.get('domain_info', {}).get('headers', {})):
-                    issues['medium'].append("HSTS header not found")
+
+        # Check for security headers
+        if not any(h.lower().startswith('strict-transport-security') for h in headers):
+            issues['medium'].append("HSTS header not found")
 
         return issues
 
@@ -1449,52 +1180,48 @@ class NetworkScanner:
         ])
 
     def save_scan_results(self, domain: str, scan_results: Dict, report: str) -> None:
-        """Save all scan results to appropriate directories with visual feedback"""
+        """Save scan results to files"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         scan_dir = self.create_scan_directory(domain)
-
-        # Progress animation
-        with tqdm(total=5, desc="Saving results", unit="file") as pbar:
-            # Save the main report
+        
+        # Save files with progress bar
+        with tqdm(total=3, desc="Saving results", unit="file") as pbar:
+            # Save main report
             report_file = self.reports_dir / f"{domain}_{timestamp}.txt"
             report_file.write_text(report)
             pbar.update(1)
 
-            # Save raw scan data
-            scan_results_copy = scan_results.copy()
-            scan_results_copy['timestamp'] = scan_results_copy['timestamp'].isoformat()
+            # Save raw data
+            raw_data = scan_results.copy()
+            raw_data['timestamp'] = raw_data['timestamp'].isoformat()
             raw_data_file = scan_dir / "raw_scan_data.json"
             with raw_data_file.open('w') as f:
-                json.dump(scan_results_copy, f, indent=4, default=str)
+                json.dump(raw_data, f, indent=4, default=str)
             pbar.update(1)
 
-            # Save component results
-            components = {
+            # Save component data
+            for name, data in {
                 'ports': scan_results.get('open_ports', []),
                 'dns': scan_results.get('domain_info', {}).get('dns', []),
-                'headers': scan_results.get('domain_info', {}).get('headers', {}),
                 'whois': scan_results.get('domain_info', {}).get('whois', {})
-            }
-
-            for component, data in components.items():
-                component_file = scan_dir / f"{component}_data.txt"
+            }.items():
+                component_file = scan_dir / f"{name}_data.txt"
                 with component_file.open('w') as f:
                     if isinstance(data, (list, dict)):
-                        f.write(json.dumps(data, indent=4, default=str))
+                        json.dump(data, f, indent=4, default=str)
                     else:
                         f.write(str(data))
-                pbar.update(1)
+            pbar.update(1)
 
-        # Show save summary
-        print(f"\n{Fore.GREEN}╔{'═' * 68}╗")
-        print(f"║ {'Scan Results Saved Successfully':^66} ║")
-        print(f"╠{'═' * 68}╣")
-        print(f"║ Report: {str(report_file):<58} ║")
-        print(f"║ Details: {str(scan_dir):<57} ║")
-        print(f"╚{'═' * 68}╝{Style.RESET_ALL}") 
+        # Show save confirmation
+        print(format_save_confirmation(report_file, scan_dir))
+
     def scan_network(self, target: str, tcp_only: bool = False, udp_only: bool = False, rtsp_scan: bool = False, rtsp_port: int = 554, rtsp_depth: int = 1, bypass: bool = False, limit: Optional[int] = None) -> List[Dict]:
         """Scan a network range or single IP with protocol options"""
         try:
+            # Initialize MultipleIPScanner instance
+            multiple_scanner = MultipleIPScanner()
+
             if bypass and validators.domain(target):
                 print(f"\n{Fore.YELLOW}[*] Attempting to bypass CDN/WAF...{Style.RESET_ALL}")
                 origin_ip = self.bypass_scanner.find_origin_ip(target)
@@ -1509,9 +1236,6 @@ class NetworkScanner:
                         return [result]
                 else:
                     print(f"{Fore.RED}[!] Could not find origin IP, falling back to normal scan{Style.RESET_ALL}")
-
-            # Initialize MultipleIPScanner for domain resolution
-            multiple_scanner = MultipleIPScanner()
 
             # Check if target is a domain name that needs resolution
             if multiple_scanner.validate_domain(target):
@@ -1559,102 +1283,94 @@ class NetworkScanner:
 
     def scan_single_target(self, target: str, tcp_only: bool = False, udp_only: bool = False,
                           rtsp_scan: bool = False, rtsp_port: int = 554, rtsp_depth: int = 1) -> Dict:
-        """single target scanning with better IP information"""
+        """single target scanning with automatic host detection"""
         try:
-            # Set bypass flag for IP details collection
-            self._current_scan_is_bypassed = getattr(self, 'bypass_scanner', None) is not None
-
+            # First check if the target is responsive
+            ip_scan_result = scan_target(target, self.force_scan)
+            
+            # Get IP details first and display them
+            ip_details = self.get_ip_details(target)
+            self.whois_scanner.print_ip_info(ip_details)  # Print IP info immediately
+            
             # Initialize scan results
             scan_results = {
-                'timestamp': datetime.now().isoformat(),
-                'scan_type': []
+                'timestamp': datetime.now(),
+                'scan_type': [],
+                'host_detection': ip_scan_result,
+                'ip': target,
+                'domain': None,
+                'ip_info': ip_details  # Store IP info in results
             }
 
-            # Resolve IP and get detailed information
-            if validators.domain(target):
-                print(f"{Fore.BLUE}[*] Resolving domain {target}...{Style.RESET_ALL}")
-                ip = self.get_ip_from_website(target)
-                if not ip:
-                    return {'error': f'Could not resolve IP for {target}'}
-                scan_results['domain'] = target
-                scan_results['ip_info'] = self.get_ip_details(ip)
-                scan_results['ip'] = ip
+            if not ip_scan_result['should_scan']:
+                print(f"\n{Fore.YELLOW}[!] Host {target} appears to be down or blocking our scans")
+                retry = input(f"Would you like to force scan anyway? (y/N): {Style.RESET_ALL}").lower()
+                if retry == 'y':
+                    self.force_scan = True
+                    ip_scan_result = scan_target(target, True)
+                    scan_results['host_detection'] = ip_scan_result
+                else:
+                    return {'error': f'Host {target} is down or blocking scans'}
+
+            # If host is filtered but we're continuing, show appropriate message
+            if ip_scan_result['scan_method'] == 'filtered':
+                print(f"{Fore.YELLOW}[*] Host detection blocked, continuing to force scanner{Style.RESET_ALL}")
+            elif ip_scan_result['scan_method'] == 'forced':
+                print(f"{Fore.YELLOW}[*] Forcing scan regardless of host state{Style.RESET_ALL}")
             else:
-                ip = target
-                scan_results['ip'] = ip
-                scan_results['ip_info'] = self.get_ip_details(ip)
-                try:
-                    scan_results['domain'] = socket.gethostbyaddr(ip)[0]
-                except socket.herror:
-                    scan_results['domain'] = ip
+                print(f"{Fore.GREEN}[+] Host is up ({ip_scan_result['method']}){Style.RESET_ALL}")
 
-            # Print IP information
-            self._print_ip_info(scan_results['ip_info'])
-
-            # Only perform TCP/UDP scans if RTSP scan is not exclusively requested
+            # Perform port scanning based on protocol selection
             if not rtsp_scan or tcp_only or udp_only:
                 scan_results['open_ports'] = {}
-                scan_results['domain_info'] = {}
-                scan_results['vulnerabilities'] = {
-                    'vulners': [],
-                    'nvd': [],
-                    'status': 'No vulnerabilities found'
-                }
                 
-                # Perform TCP/UDP scans
                 if tcp_only:
                     scan_results['scan_type'].append('TCP')
-                    tcp_ports = self.scan_ports(ip, protocol='tcp')
+                    tcp_ports = self.scan_ports(target, protocol='tcp')
                     if tcp_ports:
                         scan_results['open_ports']['tcp'] = tcp_ports
                 elif udp_only:
                     scan_results['scan_type'].append('UDP')
-                    udp_ports = self.scan_ports(ip, protocol='udp')
+                    udp_ports = self.scan_ports(target, protocol='udp')
                     if udp_ports:
                         scan_results['open_ports']['udp'] = udp_ports
-                elif not rtsp_scan:  # Full scan only if RTSP is not exclusive
+                else:  # Full scan
                     scan_results['scan_type'].extend(['TCP', 'UDP'])
-                    tcp_ports = self.scan_ports(ip, protocol='tcp')
-                    udp_ports = self.scan_ports(ip, protocol='udp')
+                    tcp_ports = self.scan_ports(target, protocol='tcp')
+                    udp_ports = self.scan_ports(target, protocol='udp')
                     if tcp_ports:
                         scan_results['open_ports']['tcp'] = tcp_ports
                     if udp_ports:
                         scan_results['open_ports']['udp'] = udp_ports
 
-                # Additional scans for domain
-                if validators.domain(scan_results['domain']):
-                    domain_info = self.fetch_domain_info(scan_results['domain'])
-                    if domain_info:
-                        scan_results['domain_info'] = domain_info
-
-                # Vulnerability checks
-                if 'open_ports' in scan_results and scan_results['open_ports']:
-                    all_ports = []
-                    if 'tcp' in scan_results['open_ports']:
-                        all_ports.extend(scan_results['open_ports']['tcp'])
-                    if 'udp' in scan_results['open_ports']:
-                        all_ports.extend(scan_results['open_ports']['udp'])
-
-                    if all_ports:
-                        vuln_results = self.check_vulnerabilities(all_ports)
-                        if vuln_results:
-                            scan_results['vulnerabilities'] = vuln_results
-
-            # RTSP scan
+            # RTSP scan if requested
             if rtsp_scan:
                 scan_results['scan_type'].append('RTSP')
-                rtsp_results = self.scan_rtsp(ip, rtsp_port, rtsp_depth)
+                rtsp_results = self.scan_rtsp(target, rtsp_port, rtsp_depth)
                 scan_results['rtsp_scan'] = rtsp_results
+
+            # Get additional target information
+            try:
+                # Try to get hostname if IP
+                if not validators.domain(target):
+                    try:
+                        hostname = socket.gethostbyaddr(target)[0]
+                        scan_results['domain'] = hostname
+                    except socket.herror:
+                        pass
+                
+                # Get IP details
+                ip_details = self.get_ip_details(target)
+                scan_results['ip_info'] = ip_details
+                
+            except Exception as e:
+                logging.debug(f"Error getting additional target info: {e}")
 
             return scan_results
 
         except Exception as e:
             logging.error(f"Error scanning {target}: {e}")
             return {'error': f'Scan failed for {target}: {str(e)}'}
-
-        finally:
-            # Reset bypass flag
-            self._current_scan_is_bypassed = False
 
     def save_results(self, results: List[Dict], output_file: str) -> None:
         """Save scan results to a file in the results/reports directory using target name"""
@@ -2231,86 +1947,7 @@ class NetworkScanner:
 
     def get_ip_details(self, ip: str) -> Dict:
         """Get comprehensive IP information"""
-        try:
-            ip_details = {
-                'ip': ip,
-                'hostname': None,
-                'geo_location': {},
-                'asn_info': {},
-                'security_info': {},
-                'cdn_info': {
-                    'detected': False,
-                    'provider': None
-                },
-                'reverse_dns': [],
-                'organization': None
-            }
-
-            # Get reverse DNS
-            try:
-                hostname, _, _ = socket.gethostbyaddr(ip)
-                ip_details['hostname'] = hostname
-            except socket.herror:
-                pass
-
-            # Get IP geolocation and ASN info
-            try:
-                geo_response = self.ip_info_session.get(f'https://ipapi.co/{ip}/json/')
-                if (geo_response.status_code == 200):
-                    geo_data = geo_response.json()
-                    ip_details['geo_location'] = {
-                        'country': geo_data.get('country_name'),
-                        'region': geo_data.get('region'),
-                        'city': geo_data.get('city'),
-                        'latitude': geo_data.get('latitude'),
-                        'longitude': geo_data.get('longitude'),
-                        'timezone': geo_data.get('timezone')
-                    }
-                    ip_details['asn_info'] = {
-                        'asn': geo_data.get('asn'),
-                        'org': geo_data.get('org'),
-                        'isp': geo_data.get('isp')
-                    }
-                    ip_details['organization'] = geo_data.get('org')
-            except Exception as e:
-                logging.debug(f"Error getting geolocation: {e}")
-
-            # Check for CDN
-            cdn_patterns = {
-                'Cloudflare': r'cloudflare',
-                'Akamai': r'akamai',
-                'Fastly': r'fastly',
-                'CloudFront': r'cloudfront',
-                'Imperva': r'imperva',
-                'Sucuri': r'sucuri',
-                'MaxCDN': r'maxcdn',
-                'KeyCDN': r'keycdn'
-            }
-
-            # Skip CDN check if this is a bypassed origin IP
-            if not hasattr(self, '_current_scan_is_bypassed') or not self._current_scan_is_bypassed:
-                if ip_details['organization']:
-                    for cdn, pattern in cdn_patterns.items():
-                        if re.search(pattern, ip_details['organization'].lower()):
-                            ip_details['cdn_info'] = {
-                                'detected': True,
-                                'provider': cdn
-                            }
-                            break
-
-            # Get additional reverse DNS records
-            try:
-                resolver = dns.resolver.Resolver()
-                ptr_records = resolver.resolve_address(ip)
-                ip_details['reverse_dns'] = [str(r) for r in ptr_records]
-            except Exception:
-                pass
-
-            return ip_details
-
-        except Exception as e:
-            logging.error(f"Error getting IP details: {e}")
-            return {'ip': ip, 'error': str(e)}
+        return self.whois_scanner.get_ip_details(ip)
 
     def _print_ip_info(self, ip_info: Dict) -> None:
         """Print formatted IP information with enhanced details"""
@@ -2598,88 +2235,19 @@ Network Enumeration Scanner - A powerful network reconnaissance tool''',
 
     return args
 
+from assets.banner_results import format_scan_error, format_scan_success, format_save_confirmation
+
 def format_results_for_display(results: List[Dict]) -> str:
-    """Format scan results for display with UI"""
+    """Format scan results for display"""
     if not results:
         return f"{Fore.RED}[!] No scan results available{Style.RESET_ALL}"
 
     output = []
-    
     for result in results:
-        # Handle error results
         if 'error' in result:
-            output.append(f"{Fore.RED}╔{'═' * 68}╗")
-            output.append(f"║{' '*25}SCAN ERROR{' '*34}║")
-            output.append(f"╚{'═' * 68}╝{Style.RESET_ALL}")
-            output.append(f"\n{Fore.RED}[!] {result['error']}{Style.RESET_ALL}\n")
-            continue
-
-        # Basic information section
-        output.append(f"{Fore.CYAN}╔{'═' * 68}╗")
-        output.append(f"║{' '*25}SCAN RESULTS{' '*32}║")
-        output.append(f"╚{'═' * 68}╝{Style.RESET_ALL}")
-        
-        output.append(f"\n{Fore.YELLOW}Target Information:{Style.RESET_ALL}")
-        output.append(f"• IP Address: {result.get('ip', 'N/A')}")
-        output.append(f"• Domain: {result.get('domain', 'N/A')}")
-        output.append(f"• Scan Time: {result.get('timestamp', 'N/A')}")
-        output.append(f"• Scan Type: {', '.join(result.get('scan_type', ['Unknown']))}")
-
-        # Port scan results section
-        if 'open_ports' in result:
-            output.append(f"\n{Fore.YELLOW}[*] PORT SCAN RESULTS:{Style.RESET_ALL}")
-            
-            # TCP ports
-            if 'tcp' in result['open_ports'] and result['open_ports']['tcp']:
-                output.append(f"\n{Fore.BLUE}TCP Open Ports:{Style.RESET_ALL}")
-                for port, service in result['open_ports']['tcp']:
-                    if service and service != "unknown":
-                        output.append(f"• Port {port}/tcp - {service}")
-                    else:
-                        output.append(f"• Port {port}/tcp")
-            
-            # UDP ports
-            if 'udp' in result['open_ports'] and result['open_ports']['udp']:
-                output.append(f"\n{Fore.BLUE}UDP Open Ports:{Style.RESET_ALL}")
-                for port, service in result['open_ports']['udp']:
-                    if service and service != "unknown":
-                        output.append(f"• Port {port}/udp - {service}")
-                    else:
-                        output.append(f"• Port {port}/udp")
-            
-            # If no open ports found
-            if (not result['open_ports'].get('tcp') and 
-                not result['open_ports'].get('udp')):
-                output.append(f"{Fore.GREEN}No open ports found{Style.RESET_ALL}")
-
-        # Add vulnerability results section
-        if 'vulnerabilities' in result:
-            output.append(f"\n{Fore.YELLOW}[*] VULNERABILITY SCAN RESULTS:{Style.RESET_ALL}")
-            vulns = result['vulnerabilities']
-            
-            if vulns.get('findings'):
-                output.append(f"\n{Fore.RED}Found Vulnerabilities:{Style.RESET_ALL}")
-                for vuln in vulns['findings']:
-                    cvss_color = (Fore.RED if vuln.get('cvss', 0) >= 7.0 else 
-                                Fore.YELLOW if vuln.get('cvss', 0) >= 4.0 else 
-                                Fore.GREEN)
-                    
-                    output.append(f"\n• {Fore.CYAN}CVE:{Style.RESET_ALL} {vuln.get('cve_id')}")
-                    output.append(f"  {Fore.CYAN}CVSS:{Style.RESET_ALL} {cvss_color}{vuln.get('cvss', 'N/A')}{Style.RESET_ALL}")
-                    output.append(f"  {Fore.CYAN}Description:{Style.RESET_ALL} {vuln.get('description', 'N/A')}")
-                    
-                    if vuln.get('exploit_available'):
-                        output.append(f"  {Fore.RED}⚠ Exploit Available{Style.RESET_ALL}")
-                
-                # Add summary
-                output.append(f"\n{Fore.YELLOW}Summary:{Style.RESET_ALL}")
-                output.append(f"• Total Vulnerabilities: {vulns['summary']['total']}")
-                output.append(f"• Critical: {Fore.RED}{vulns['summary']['critical']}{Style.RESET_ALL}")
-                output.append(f"• High: {Fore.RED}{vulns['summary']['high']}{Style.RESET_ALL}")
-                output.append(f"• Medium: {Fore.YELLOW}{vulns['summary']['medium']}{Style.RESET_ALL}")
-                output.append(f"• Low: {Fore.GREEN}{vulns['summary']['low']}{Style.RESET_ALL}")
-            else:
-                output.append(f"{Fore.GREEN}No vulnerabilities found{Style.RESET_ALL}")
+            output.append(format_scan_error(result['error']))
+        else:
+            output.append(format_scan_success(result))
 
     return '\n'.join(output)
 
@@ -2722,70 +2290,7 @@ def handle_wifi_scan(args) -> None:
         print("    - WiFi hardware is available and enabled")
         print(f"    - Required packages are installed (wireless-tools){Style.RESET_ALL}")
 
-def print_usage_hint(error_type: str, provided_args: list = None) -> None:
-    """Print helpful usage hints based on error type"""
-    print(f"\n{Fore.RED}[!] Usage Error: {Style.RESET_ALL}")
-    
-    hints = {
-        'rtsp_no_target': f"""
-{Fore.YELLOW}RTSP scan requires a target. Use:
-{Fore.CYAN}python NEScan.py --rtsp-scan --target <IP/HOSTNAME> {Fore.GREEN}[options]
-{Fore.YELLOW}Example:
-{Fore.CYAN}python NEScan.py --rtsp-scan --target 192.168.1.100 --rtsp-port 554{Style.RESET_ALL}
-        """,
-        
-        'no_target': f"""
-{Fore.YELLOW}A target is required. Use:
-{Fore.CYAN}python NEScan.py --target <IP/HOSTNAME/NETWORK> {Fore.GREEN}[options]
-{Fore.YELLOW}Examples:
-{Fore.CYAN}python NEScan.py --target 192.168.1.100
-python NEScan.py --target example.com
-python NEScan.py --target 192.168.1.0/24{Style.RESET_ALL}
-        """,
-        
-        'invalid_port': f"""
-{Fore.YELLOW}Invalid port specified. Port must be between 1-65535. Use:
-{Fore.CYAN}python NEScan.py --target <IP> --rtsp-port <PORT>
-{Fore.YELLOW}Example:
-{Fore.CYAN}python NEScan.py --target 192.168.1.100 --rtsp-port 554{Style.RESET_ALL}
-        """,
-        
-        'api_key_format': f"""
-{Fore.YELLOW}Invalid API key format. Use:
-{Fore.CYAN}python NEScan.py --target <IP> --api-vulners <KEY> --api-nvd <KEY>
-{Fore.YELLOW}Example:
-{Fore.CYAN}python NEScan.py --target example.com --api-vulners YOUR-KEY --api-nvd YOUR-KEY{Style.RESET_ALL}
-        """,
-        
-        'wifi_sudo': f"""
-{Fore.YELLOW}WiFi scanning requires root privileges. Use:
-{Fore.CYAN}sudo python3 NEScan.py --wifiscan
-{Fore.YELLOW}or for specific SSID:
-{Fore.CYAN}sudo python3 NEScan.py --wt <SSID>{Style.RESET_ALL}
-        """,
-        
-        'invalid_range': f"""
-{Fore.YELLOW}Invalid IP range format. Use CIDR notation:
-{Fore.CYAN}python NEScan.py --target <NETWORK>/<MASK>
-{Fore.YELLOW}Examples:
-{Fore.CYAN}python NEScan.py --target 192.168.1.0/24
-python NEScan.py --target 10.0.0.0/16{Style.RESET_ALL}
-        """,
-        
-        'general': f"""
-{Fore.YELLOW}For complete usage information, use:
-{Fore.CYAN}python NEScan.py --help
-
-{Fore.YELLOW}Common usage patterns:
-{Fore.CYAN}1. Basic scan:      python NEScan.py --target <IP/DOMAIN>
-2. TCP only:        python NEScan.py --target <IP/DOMAIN> --tcp
-3. RTSP scan:       python NEScan.py --target <IP/DOMAIN> --rtsp-scan
-4. WiFi scan:       sudo python3 NEScan.py --wifiscan
-5. Network range:   python NEScan.py --target 192.168.1.0/24{Style.RESET_ALL}
-        """
-    }
-    
-    print(hints.get(error_type, hints['general']))
+from assets.hints import print_hint
 
 def main():
     try:
@@ -2797,8 +2302,7 @@ def main():
             missing_deps.append("shodan")
             
         if missing_deps:
-            print(f"{Fore.YELLOW}[!] Optional dependencies not found: {', '.join(missing_deps)}")
-            print(f"[*] Install them using: pip install {' '.join(missing_deps)}{Style.RESET_ALL}")
+            print_hint('missing_dependencies')
             
         args = parse_arguments()
         
@@ -2870,27 +2374,27 @@ def main():
         
         # Add usage hints for common errors
         if args.rtsp_scan and not args.target:
-            print_usage_hint('rtsp_no_target')
+            print_hint('rtsp_no_target')
             sys.exit(1)
             
         if args.rtsp_port and (args.rtsp_port < 1 or args.rtsp_port > 65535):
-            print_usage_hint('invalid_port')
+            print_hint('invalid_port')
             sys.exit(1)
             
         if (args.api_vulners and len(args.api_vulners) < 32) or \
            (args.api_nvd and len(args.api_nvd) < 32):
-            print_usage_hint('api_key_format')
+            print_hint('api_key_format')
             sys.exit(1)
             
         if (args.wifiscan or args.wt) and os.geteuid() != 0:
-            print_usage_hint('wifi_sudo')
+            print_hint('wifi_sudo')
             sys.exit(1)
             
         if args.target and '/' in args.target:
             try:
                 ipaddress.ip_network(args.target)
             except ValueError:
-                print_usage_hint('invalid_range')
+                print_hint('invalid_range')
                 sys.exit(1)
 
         results = scanner.scan_network(
@@ -2915,13 +2419,11 @@ def main():
             scanner.save_results(results, args.output)
             
     except KeyboardInterrupt:
-        print(f"\n{Fore.YELLOW}[!] Scan interrupted by user{Style.RESET_ALL}")
-        print_usage_hint('general')
+        print_hint('scan_interrupted')
         sys.exit(1)
     except Exception as e:
         logging.error(f"Scan failed: {e}")
-        print(f"\n{Fore.RED}[!] Scan failed: {str(e)}{Style.RESET_ALL}")
-        print_usage_hint('general')
+        print_hint('general', f"Scan failed: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":
