@@ -560,6 +560,13 @@ class NetworkScanner:
         self.bypass_scanner = BypassScanner()
         self.force_scan = False  # Add this line
 
+        # Add GeoIP2 availability check
+        self.ip_info_session = requests.Session()
+        self.ip_info_session.headers.update({
+            'User-Agent': 'NEScan/2.2',
+            'Accept': 'application/json'
+        })
+
     def create_scan_directory(self, domain: str) -> pathlib.Path:
         """Create a timestamped directory for this scan's results"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

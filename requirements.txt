@@ -20,3 +20,5 @@ wifi==0.3.8
 pywifi>=1.1.12
 shodan
 pyOpenSSL
+geoip2
+nmap
