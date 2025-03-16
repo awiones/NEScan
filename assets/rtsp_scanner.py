@@ -149,7 +149,7 @@ DEFAULT_CREDENTIALS = [
     RTSPCredential("dahua", "Dahua@123"),
     RTSPCredential("axis", "axis"),
     RTSPCredential("axis", "axis123"),
-    RTSPCredential("axis", "Axis@123"),
+    RTSPCredential("Axis@123"),
     RTSPCredential("samsung", "samsung"),
     RTSPCredential("samsung", "samsung123"),
     RTSPCredential("samsung", "Samsung@123"),
@@ -415,13 +415,15 @@ class RTSPScanner:
         self.successful_paths: Set[str] = set()
         self.channel_map = {}
         self.path_queue = Queue()
-        self.max_workers = min(32, len(RTSP_PATHS))  # Limit max threads
+        self.max_workers = min(50, len(RTSP_PATHS))  # Increased max workers
         self.connection_cache = {}  # Cache for connection results
         self.auth_cache = {}  # Cache for authentication results
         self.scan_start_time = None
         self.last_activity = None
         self.requests_sent = 0
         self.responses_received = 0
+        self.connection_pool = []
+        self.connection_semaphore = asyncio.Semaphore(50)  # Connection pool limit
 
     @lru_cache(maxsize=1024)
     def _create_rtsp_request(self, path: str, credential: Optional[RTSPCredential] = None) -> str:
@@ -445,40 +447,123 @@ class RTSPScanner:
         except:
             return False
 
+    async def _get_connection(self):
+        """Get connection from pool or create new one"""
+        async with self.connection_semaphore:
+            try:
+                reader, writer = await asyncio.wait_for(
+                    asyncio.open_connection(self.host, self.port),
+                    timeout=self.timeout
+                )
+                return reader, writer
+            except Exception as e:
+                logging.debug(f"Connection error: {str(e)}")
+                return None, None
+
     async def _async_test_rtsp_path(self, path: RTSPPath, credential: Optional[RTSPCredential] = None) -> Optional[Dict]:
-        """Asynchronous RTSP path testing with validation"""
+        """Optimized RTSP path testing"""
         try:
             self.requests_sent += 1
-            self.last_activity = time.time()
             
-            # Check cache first
+            # Use cached result if available
             cache_key = (path.path, credential.username if credential else None, 
                         credential.password if credential else None)
             if cache_key in self.connection_cache:
                 return self.connection_cache[cache_key]
 
-            reader, writer = await asyncio.open_connection(self.host, self.port)
-            request = self._create_rtsp_request(path.path, credential)
-            
-            writer.write(request.encode())
-            await writer.drain()
-            
-            response = await reader.read(1024)
-            writer.close()
-            await writer.wait_closed()
-            
-            response_str = response.decode('utf-8', errors='ignore')
-            
-            result = self._process_response(path, credential, response_str)
-            self.connection_cache[cache_key] = result
-            
-            self.responses_received += 1
-            self.last_activity = time.time()
-            return result
+            reader, writer = await self._get_connection()
+            if not reader or not writer:
+                return None
+
+            try:
+                request = self._create_rtsp_request(path.path, credential)
+                writer.write(request.encode())
+                await writer.drain()
+                
+                response = await asyncio.wait_for(
+                    reader.read(1024),
+                    timeout=self.timeout
+                )
+                
+                response_str = response.decode('utf-8', errors='ignore')
+                result = self._process_response(path, credential, response_str)
+                
+                if result:
+                    self.connection_cache[cache_key] = result
+                    self.responses_received += 1
+                
+                return result
+
+            finally:
+                writer.close()
+                await writer.wait_closed()
 
         except Exception as e:
-            logging.debug(f"Error testing RTSP path {path.path}: {str(e)}")
+            logging.debug(f"Error testing {path.path}: {str(e)}")
             return None
+
+    async def _scan_batch(self, paths: List[RTSPPath], credentials: List[RTSPCredential]) -> List[Dict]:
+        """Optimized batch scanning"""
+        tasks = []
+        results = []
+        batch_size = 10  # Increased batch size
+        
+        # Process paths in larger batches
+        for i in range(0, len(paths), batch_size):
+            batch = paths[i:i+batch_size]
+            batch_tasks = []
+            
+            for path in batch:
+                clean_path = path.path.rstrip('/')
+                current_url = f"rtsp://{self.host}:{self.port}{clean_path}"
+                print(f"\r{Fore.CYAN}[*] Checking: {current_url:<70}{Style.RESET_ALL}", end='', flush=True)
+                batch_tasks.append(self._async_test_rtsp_path(path))
+
+            # Wait for batch results
+            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
+            
+            for result in batch_results:
+                if isinstance(result, dict):
+                    if result['response_code'] == "200 OK":
+                        rtsp_url = f"rtsp://{self.host}:{self.port}{result['path'].rstrip('/')}"
+                        print(f"\n{Fore.GREEN}[✓] Found: {rtsp_url}{Style.RESET_ALL}")
+                        results.append(result)
+                    
+                    # Concurrent auth testing for responsive paths
+                    if credentials and (result['response_code'] == "401 Unauthorized" or result['response_code'] == "200 OK"):
+                        auth_path = RTSPPath(result['path'], result['description'], result['priority'])
+                        auth_tasks = []
+                        
+                        # Test multiple credentials concurrently
+                        for cred in credentials[:10]:  # Test top 10 credentials first
+                            auth_url = f"rtsp://{cred.username}:{cred.password}@{self.host}:{self.port}{auth_path.path.rstrip('/')}"
+                            print(f"\r{Fore.BLUE}[*] Trying: {auth_url:<70}{Style.RESET_ALL}", end='', flush=True)
+                            auth_tasks.append(self._async_test_rtsp_path(auth_path, cred))
+                        
+                        auth_results = await asyncio.gather(*auth_tasks, return_exceptions=True)
+                        for auth_result in auth_results:
+                            if isinstance(auth_result, dict) and auth_result['response_code'] == "200 OK":
+                                auth_url = f"rtsp://{auth_result['username']}:{auth_result['password']}@{self.host}:{self.port}{auth_result['path'].rstrip('/')}"
+                                print(f"\n{Fore.GREEN}[✓] Found: {auth_url}{Style.RESET_ALL}")
+                                results.append(auth_result)
+                                # Skip remaining credentials if one works
+                                break
+
+        return results
+
+    async def _optimize_paths(self, paths: List[RTSPPath]) -> List[RTSPPath]:
+        """Optimize path scanning order based on previous results"""
+        if not self.successful_paths:
+            return paths
+            
+        def similarity_score(path: RTSPPath) -> float:
+            base_score = max(len(os.path.commonprefix([path.path, sp])) for sp in self.successful_paths)
+            # Prioritize same-priority paths
+            if any(sp.endswith(path.path.split('/')[-1]) for sp in self.successful_paths):
+                base_score += 10
+            return base_score
+
+        return sorted(paths, key=lambda p: similarity_score(p), reverse=True)
 
     def _process_response(self, path: RTSPPath, credential: Optional[RTSPCredential], response: str) -> Optional[Dict]:
         """Process RTSP response and extract information"""
@@ -540,26 +625,23 @@ class RTSPScanner:
                         rtsp_url = f"rtsp://{self.host}:{self.port}{result['path'].rstrip('/')}"
                         print(f"\n{Fore.GREEN}[✓] Found: {rtsp_url}{Style.RESET_ALL}")
                         results.append(result)
-                    elif result['response_code'] == "401 Unauthorized" and credentials:
-                        # Only try auth for paths that require it
+                    
+                    # Try auth for all paths that respond, not just 401
+                    if credentials:
                         auth_path = RTSPPath(result['path'], result['description'], result['priority'])
                         for cred in credentials:
                             if self.stop_scan:
                                 break
                             auth_url = f"rtsp://{cred.username}:{cred.password}@{self.host}:{self.port}{auth_path.path.rstrip('/')}"
                             print(f"\r{Fore.BLUE}[*] Trying: {auth_url:<70}{Style.RESET_ALL}", end='', flush=True)
-                            result = await self._async_test_rtsp_path(auth_path, cred)
-                            if result and result['response_code'] == "200 OK":
+                            auth_result = await self._async_test_rtsp_path(auth_path, cred)
+                            if auth_result and auth_result['response_code'] == "200 OK":
                                 print(f"\n{Fore.GREEN}[✓] Found: {auth_url}{Style.RESET_ALL}")
-                                results.append(result)
+                                results.append(auth_result)
+
             except Exception as e:
                 logging.debug(f"Error in scan batch: {e}")
 
-        # Add progress metrics
-        success_rate = (self.responses_received / self.requests_sent * 100) if self.requests_sent > 0 else 0
-        print(f"\r{Fore.BLUE}[*] Progress: Sent={self.requests_sent}, Received={self.responses_received}, Success={success_rate:.1f}%{Style.RESET_ALL}", end='')
-        
-        print('\r' + ' ' * 100 + '\r', end='')  # Clear current line
         return results
 
     def scan(self, use_auth: bool = True, priority_level: int = 3) -> List[Dict]:
