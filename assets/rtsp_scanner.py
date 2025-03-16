@@ -149,7 +149,7 @@ DEFAULT_CREDENTIALS = [
     RTSPCredential("dahua", "Dahua@123"),
     RTSPCredential("axis", "axis"),
     RTSPCredential("axis", "axis123"),
-    RTSPCredential("Axis@123"),
+    RTSPCredential("axis", "Axis@123"), 
     RTSPCredential("samsung", "samsung"),
     RTSPCredential("samsung", "samsung123"),
     RTSPCredential("samsung", "Samsung@123"),
