@@ -165,3 +165,8 @@ cython_debug/
 # Vscode
 .vscode
 settings.json
+.qodo
+.github
+LICENSE
+CONTRIBUTING.md
+README.md

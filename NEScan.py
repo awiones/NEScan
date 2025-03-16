@@ -1290,7 +1290,7 @@ class NetworkScanner:
 
     def scan_single_target(self, target: str, tcp_only: bool = False, udp_only: bool = False,
                           rtsp_scan: bool = False, rtsp_port: int = 554, rtsp_depth: int = 1) -> Dict:
-        """single target scanning with automatic host detection"""
+        """single target scanning with automatic host detection and RTSP support"""
         try:
             # First check if the target is responsive
             ip_scan_result = scan_target(target, self.force_scan)
@@ -1306,7 +1306,7 @@ class NetworkScanner:
                 'host_detection': ip_scan_result,
                 'ip': target,
                 'domain': None,
-                'ip_info': ip_details  # Store IP info in results
+                'ip_info': ip_details
             }
 
             if not ip_scan_result['should_scan']:
@@ -1319,15 +1319,14 @@ class NetworkScanner:
                 else:
                     return {'error': f'Host {target} is down or blocking scans'}
 
-            # If host is filtered but we're continuing, show appropriate message
-            if ip_scan_result['scan_method'] == 'filtered':
-                print(f"{Fore.YELLOW}[*] Host detection blocked, continuing to force scanner{Style.RESET_ALL}")
-            elif ip_scan_result['scan_method'] == 'forced':
-                print(f"{Fore.YELLOW}[*] Forcing scan regardless of host state{Style.RESET_ALL}")
-            else:
-                print(f"{Fore.GREEN}[+] Host is up ({ip_scan_result['method']}){Style.RESET_ALL}")
+            # If doing RTSP scan only
+            if rtsp_scan and not (tcp_only or udp_only):
+                scan_results['scan_type'].append('RTSP')
+                rtsp_results = self.scan_rtsp(target, rtsp_port, rtsp_depth)
+                scan_results['rtsp_scan'] = rtsp_results
+                return scan_results
 
-            # Perform port scanning based on protocol selection
+            # Perform regular port scanning if requested
             if not rtsp_scan or tcp_only or udp_only:
                 scan_results['open_ports'] = {}
                 
@@ -1350,28 +1349,11 @@ class NetworkScanner:
                     if udp_ports:
                         scan_results['open_ports']['udp'] = udp_ports
 
-            # RTSP scan if requested
+            # Additional RTSP scan if requested alongside other scans
             if rtsp_scan:
                 scan_results['scan_type'].append('RTSP')
                 rtsp_results = self.scan_rtsp(target, rtsp_port, rtsp_depth)
                 scan_results['rtsp_scan'] = rtsp_results
-
-            # Get additional target information
-            try:
-                # Try to get hostname if IP
-                if not validators.domain(target):
-                    try:
-                        hostname = socket.gethostbyaddr(target)[0]
-                        scan_results['domain'] = hostname
-                    except socket.herror:
-                        pass
-                
-                # Get IP details
-                ip_details = self.get_ip_details(target)
-                scan_results['ip_info'] = ip_details
-                
-            except Exception as e:
-                logging.debug(f"Error getting additional target info: {e}")
 
             return scan_results
 
@@ -1930,16 +1912,11 @@ class NetworkScanner:
             return False
 
     def scan_rtsp(self, ip: str, port: int = 554, depth: int = 1) -> Dict:
-        """Perform RTSP scanning"""
+        """Perform RTSP scanning using RTSPScanner directly"""
         try:
-            print(f"{Fore.BLUE}[*] Starting RTSP scan on port {port}...{Style.RESET_ALL}")
             scanner = RTSPScanner(ip, port)
             results = scanner.scan(use_auth=True, priority_level=depth)
             
-            # Add port information to results
-            for result in results:
-                result['port'] = port
-                
             return {
                 'status': 'success',
                 'results': results,

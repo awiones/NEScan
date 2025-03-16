@@ -40,54 +40,176 @@ class RTSPPath:
 
 # Common RTSP credentials
 DEFAULT_CREDENTIALS = [
+    # Basic admin combinations
     RTSPCredential("admin", "admin"),
-    RTSPCredential("admin", "12345"),
     RTSPCredential("admin", ""),
-    RTSPCredential("root", "root"),
     RTSPCredential("admin", "password"),
-    # Add more common credentials
-    RTSPCredential("admin", "123456"),
     RTSPCredential("admin", "admin123"),
     RTSPCredential("admin", "pass123"),
-    RTSPCredential("root", "123456"),
-    RTSPCredential("root", "password"),
-    RTSPCredential("user", "user"),
-    RTSPCredential("user", "password"),
-    RTSPCredential("guest", "guest"),
-    RTSPCredential("operator", "operator"),
-    RTSPCredential("supervisor", "supervisor"),
-    # Camera-specific credentials
-    RTSPCredential("hikvision", "hikvision"),
-    RTSPCredential("dahua", "dahua"),
-    RTSPCredential("axis", "axis"),
-    RTSPCredential("samsung", "samsung"),
-    RTSPCredential("sony", "sony"),
-    # Default camera passwords
-    RTSPCredential("admin", "4321"),
-    RTSPCredential("admin", "1234"),
-    RTSPCredential("admin", "12345678"),
-    RTSPCredential("admin", "123456789"),
+    RTSPCredential("admin", "12345"),
+    RTSPCredential("admin", "123456"),
+    
+    # Common word-based passwords
+    RTSPCredential("admin", "welcome"),
+    RTSPCredential("admin", "welcome123"),
+    RTSPCredential("admin", "letmein"),
+    RTSPCredential("admin", "letmein123"),
+    RTSPCredential("admin", "qwerty"),
+    RTSPCredential("admin", "abc123"),
+    RTSPCredential("admin", "monkey"),
+    RTSPCredential("admin", "dragon"),
+    RTSPCredential("admin", "master"),
+    RTSPCredential("admin", "login"),
+    RTSPCredential("admin", "admin1234"),
+    RTSPCredential("admin", "changeme"),
+    RTSPCredential("admin", "password1"),
+    RTSPCredential("admin", "football"),
+    RTSPCredential("admin", "baseball"),
+    RTSPCredential("admin", "secret"),
+    RTSPCredential("admin", "secret123"),
+    
+    # Common pattern variations
+    RTSPCredential("admin", "qwerty123"),
+    RTSPCredential("admin", "Password1"),
+    RTSPCredential("admin", "Password123"),
+    RTSPCredential("admin", "Welcome1"),
+    RTSPCredential("admin", "Welcome123"),
+    RTSPCredential("admin", "abc@123"),
+    RTSPCredential("admin", "master123"),
+    RTSPCredential("admin", "login123"),
+    
+    # Special word patterns
+    RTSPCredential("admin", "adminadmin"),
     RTSPCredential("admin", "administrator"),
-]
-
-# Add CCTV-specific credentials
-DEFAULT_CREDENTIALS.extend([
-    # Commonly used DVR/NVR credentials
-    RTSPCredential("admin", ""),
-    RTSPCredential("admin", "admin"),
+    RTSPCredential("admin", "superadmin"),
+    RTSPCredential("admin", "defaultpass"),
+    RTSPCredential("admin", "adminpass"),
+    RTSPCredential("admin", "pass@word1"),
+    RTSPCredential("admin", "p@ssw0rd"),
+    RTSPCredential("admin", "passw0rd"),
+    
+    # Common phrases
+    RTSPCredential("admin", "letmein!"),
+    RTSPCredential("admin", "trustno1"),
+    RTSPCredential("admin", "iloveyou"),
+    RTSPCredential("admin", "welcome!"),
+    RTSPCredential("admin", "changeme!"),
+    
+    # Add these patterns for root user too
+    RTSPCredential("root", "welcome"),
+    RTSPCredential("root", "welcome123"),
+    RTSPCredential("root", "letmein"),
+    RTSPCredential("root", "changeme"),
+    RTSPCredential("root", "password1"),
+    RTSPCredential("root", "Password123"),
+    RTSPCredential("root", "rootpass"),
+    RTSPCredential("root", "root1234"),
+    
+    # Common pattern passwords
+    RTSPCredential("admin", "Admin123"),
+    RTSPCredential("admin", "Admin@123"),
+    RTSPCredential("admin", "Password123"),
+    RTSPCredential("admin", "Pass@123"),
+    RTSPCredential("admin", "P@ssw0rd"),
+    RTSPCredential("admin", "adm1n"),
+    RTSPCredential("admin", "4dm1n"),
+    
+    # Special character variations
+    RTSPCredential("admin", "admin!@#"),
+    RTSPCredential("admin", "admin@123"),
+    RTSPCredential("admin", "admin#123"),
+    RTSPCredential("admin", "admin$123"),
+    RTSPCredential("admin", "admin!123"),
+    
+    # Root user variations
+    RTSPCredential("root", "root"),
+    RTSPCredential("root", "root123"),
+    RTSPCredential("root", "toor"),
+    RTSPCredential("root", "Root@123"),
+    RTSPCredential("root", "!@#$%^"),
+    
+    # Year-based passwords
+    *[RTSPCredential("admin", f"admin{year}") for year in range(2020, 2025)],
+    *[RTSPCredential("root", f"root{year}") for year in range(2020, 2025)],
+    
+    # Common user variations
+    RTSPCredential("user", "user"),
+    RTSPCredential("user", "user123"),
+    RTSPCredential("user", "User@123"),
+    RTSPCredential("guest", "guest"),
+    RTSPCredential("guest", "guest123"),
+    RTSPCredential("guest", "Guest@123"),
+    
+    # Camera brand defaults
+    RTSPCredential("hikvision", "hikvision"),
+    RTSPCredential("hikvision", "hik12345"),
+    RTSPCredential("hikvision", "Hik@12345"),
+    RTSPCredential("dahua", "dahua"),
+    RTSPCredential("dahua", "dh123456"),
+    RTSPCredential("dahua", "Dahua@123"),
+    RTSPCredential("axis", "axis"),
+    RTSPCredential("axis", "axis123"),
+    RTSPCredential("axis", "Axis@123"),
+    RTSPCredential("samsung", "samsung"),
+    RTSPCredential("samsung", "samsung123"),
+    RTSPCredential("samsung", "Samsung@123"),
+    RTSPCredential("sony", "sony"),
+    RTSPCredential("sony", "sony123"),
+    RTSPCredential("sony", "Sony@123"),
+    
+    # System default passwords
+    RTSPCredential("system", "system"),
+    RTSPCredential("supervisor", "supervisor"),
+    RTSPCredential("service", "service"),
+    RTSPCredential("support", "support"),
+    RTSPCredential("tech", "tech"),
+    
+    # Common number patterns
+    *[RTSPCredential("admin", str(i)) for i in range(1000, 10000)],  # 4 digit pins
+    *[RTSPCredential("root", str(i)) for i in range(1000, 10000)],   # 4 digit pins
+    
+    # Special number combinations
+    RTSPCredential("admin", "11111111"),
+    RTSPCredential("admin", "12121212"),
+    RTSPCredential("admin", "123123123"),
+    RTSPCredential("admin", "88888888"),
+    RTSPCredential("admin", "1234qwer"),
+    RTSPCredential("admin", "qwer1234"),
+    
+    # Manufacturer defaults
+    RTSPCredential("admin1", "admin1"),
+    RTSPCredential("admin2", "admin2"),
+    RTSPCredential("administrator", "administrator"),
+    RTSPCredential("Administrator", "Administrator"),
     RTSPCredential("666666", "666666"),
     RTSPCredential("888888", "888888"),
-    RTSPCredential("admin", "9999"),
-    RTSPCredential("admin", "12345"),
-    # DVR manufacturer defaults
+    RTSPCredential("123456789", "123456789"),
+]
+
+# Add device-specific patterns
+DEFAULT_CREDENTIALS.extend([
+    # DVR/NVR specific
     RTSPCredential("dvr", "dvr"),
-    RTSPCredential("service", "service"),
-    RTSPCredential("supervisor", "supervisor"),
-    RTSPCredential("admin1", "admin1"),
-    # More camera credentials
-    *[RTSPCredential("admin", str(i)) for i in range(1234, 12345)],  # Common numeric passwords
-    *[RTSPCredential("root", str(i)) for i in range(1234, 12345)],
+    RTSPCredential("nvr", "nvr"),
+    RTSPCredential("ipcam", "ipcam"),
+    RTSPCredential("camera", "camera"),
+    
+    # Common combo variations
+    *[RTSPCredential(f"admin{i}", f"admin{i}") for i in range(10)],
+    *[RTSPCredential(f"user{i}", f"pass{i}") for i in range(10)],
+    
+    # Additional password patterns
+    *[RTSPCredential("admin", f"pass{i:04d}") for i in range(100)],
+    *[RTSPCredential("root", f"root{i:04d}") for i in range(100)],
 ])
+
+# Add month/year combinations
+for month in range(1, 13):
+    for year in range(20, 25):
+        DEFAULT_CREDENTIALS.extend([
+            RTSPCredential("admin", f"{month:02d}{year:02d}"),
+            RTSPCredential("root", f"{month:02d}{year:02d}"),
+        ])
 
 # RTSP paths sorted by commonality
 RTSP_PATHS = [
@@ -296,6 +418,10 @@ class RTSPScanner:
         self.max_workers = min(32, len(RTSP_PATHS))  # Limit max threads
         self.connection_cache = {}  # Cache for connection results
         self.auth_cache = {}  # Cache for authentication results
+        self.scan_start_time = None
+        self.last_activity = None
+        self.requests_sent = 0
+        self.responses_received = 0
 
     @lru_cache(maxsize=1024)
     def _create_rtsp_request(self, path: str, credential: Optional[RTSPCredential] = None) -> str:
@@ -320,8 +446,11 @@ class RTSPScanner:
             return False
 
     async def _async_test_rtsp_path(self, path: RTSPPath, credential: Optional[RTSPCredential] = None) -> Optional[Dict]:
-        """Asynchronous RTSP path testing"""
+        """Asynchronous RTSP path testing with validation"""
         try:
+            self.requests_sent += 1
+            self.last_activity = time.time()
+            
             # Check cache first
             cache_key = (path.path, credential.username if credential else None, 
                         credential.password if credential else None)
@@ -342,6 +471,9 @@ class RTSPScanner:
             
             result = self._process_response(path, credential, response_str)
             self.connection_cache[cache_key] = result
+            
+            self.responses_received += 1
+            self.last_activity = time.time()
             return result
 
         except Exception as e:
@@ -386,80 +518,170 @@ class RTSPScanner:
         return None
 
     async def _scan_batch(self, paths: List[RTSPPath], credentials: List[RTSPCredential]) -> List[Dict]:
-        """Scan a batch of paths concurrently"""
+        """Scan a batch of paths with improved URL display"""
         tasks = []
-        for path in paths:
-            # Try without auth first
-            tasks.append(self._async_test_rtsp_path(path))
-            
-            # Try with credentials
-            for cred in credentials:
-                if not self.stop_scan:
-                    tasks.append(self._async_test_rtsp_path(path, cred))
-        
         results = []
+        
+        # Try without auth first for all paths
+        for path in paths:
+            clean_path = path.path.rstrip('/')
+            current_url = f"rtsp://{self.host}:{self.port}{clean_path}"
+            print(f"\r{Fore.CYAN}[*] Checking: {current_url:<70}{Style.RESET_ALL}", end='', flush=True)
+            tasks.append(self._async_test_rtsp_path(path))
+
+        # Wait for non-auth results first
         for coro in asyncio.as_completed(tasks):
             if self.stop_scan:
                 break
             try:
                 result = await coro
                 if result:
-                    results.append(result)
+                    if result['response_code'] == "200 OK":
+                        rtsp_url = f"rtsp://{self.host}:{self.port}{result['path'].rstrip('/')}"
+                        print(f"\n{Fore.GREEN}[✓] Found: {rtsp_url}{Style.RESET_ALL}")
+                        results.append(result)
+                    elif result['response_code'] == "401 Unauthorized" and credentials:
+                        # Only try auth for paths that require it
+                        auth_path = RTSPPath(result['path'], result['description'], result['priority'])
+                        for cred in credentials:
+                            if self.stop_scan:
+                                break
+                            auth_url = f"rtsp://{cred.username}:{cred.password}@{self.host}:{self.port}{auth_path.path.rstrip('/')}"
+                            print(f"\r{Fore.BLUE}[*] Trying: {auth_url:<70}{Style.RESET_ALL}", end='', flush=True)
+                            result = await self._async_test_rtsp_path(auth_path, cred)
+                            if result and result['response_code'] == "200 OK":
+                                print(f"\n{Fore.GREEN}[✓] Found: {auth_url}{Style.RESET_ALL}")
+                                results.append(result)
             except Exception as e:
                 logging.debug(f"Error in scan batch: {e}")
+
+        # Add progress metrics
+        success_rate = (self.responses_received / self.requests_sent * 100) if self.requests_sent > 0 else 0
+        print(f"\r{Fore.BLUE}[*] Progress: Sent={self.requests_sent}, Received={self.responses_received}, Success={success_rate:.1f}%{Style.RESET_ALL}", end='')
         
+        print('\r' + ' ' * 100 + '\r', end='')  # Clear current line
         return results
 
     def scan(self, use_auth: bool = True, priority_level: int = 3) -> List[Dict]:
-        """Enhanced scanning with optimizations"""
+        """Enhanced scanning with validation"""
         if not self._test_connection():
             logging.error(f"Cannot connect to {self.host}:{self.port}")
+            print(f"\n{Fore.RED}[!] No Found - Cannot connect to {self.host}:{self.port}{Style.RESET_ALL}")
             return []
+
+        self.scan_start_time = time.time()
+        self.last_activity = time.time()
+        self.requests_sent = 0
+        self.responses_received = 0
 
         self.results = []
         paths_to_scan = [p for p in RTSP_PATHS if p.priority <= priority_level]
-        
-        # Group paths by priority for better efficiency
-        priority_groups = {
-            1: [p for p in paths_to_scan if p.priority == 1],
-            2: [p for p in paths_to_scan if p.priority == 2],
-            3: [p for p in paths_to_scan if p.priority == 3]
-        }
-
+        priority_groups = {i: [p for p in paths_to_scan if p.priority == i] for i in range(1, 4)}
         credentials = DEFAULT_CREDENTIALS if use_auth else []
-        
-        # Calculate total operations for progress bar
         total_ops = sum(len(paths) * (len(credentials) + 1) for paths in priority_groups.values())
-        
+
+        print(f"\n{Fore.BLUE}[*] Starting RTSP scan on {self.host}:{self.port}")
+        print(f"[*] Testing {len(paths_to_scan)} paths{' with authentication' if use_auth else ''}")
+        print(f"[*] Using {len(credentials)} credential sets" if use_auth else "")
+        print(f"[*] Maximum operations: {total_ops}{Style.RESET_ALL}\n")
+
+        # Enhanced credentials handling
+        all_credentials = []
+        if use_auth:
+            # Base credentials from DEFAULT_CREDENTIALS
+            all_credentials.extend(DEFAULT_CREDENTIALS)
+
+            # Common word-based passwords to try with all usernames
+            word_passwords = {
+                'password', 'admin', 'admin123', '123456', '12345',
+                'welcome', 'welcome123', 'letmein', 'changeme',
+                'qwerty', 'abc123', 'monkey', 'dragon', 'master',
+                'login', 'system', 'cisco', 'default', 'pass',
+                'adminadmin', 'support', 'rootroot', 'pass123',
+                'password123', 'admin1234', 'secret', 'secret123',
+                '1234', '4321', '0000', '1111', '2222',
+                'abc@123', 'P@ssw0rd', 'p@ssw0rd', 'passw0rd'
+            }
+
+            # Common usernames to try with all passwords
+            usernames = {
+                'admin', 'root', 'user', 'guest', 'supervisor',
+                'administrator', 'Administrator', 'service',
+                'operator', 'camera', 'system', 'support',
+                'hikvision', 'dahua', 'axis', 'samsung', 'sony'
+            }
+
+            # Add all combinations of usernames and passwords
+            for user in usernames:
+                for passwd in word_passwords:
+                    all_credentials.append(RTSPCredential(user, passwd))
+                    all_credentials.append(RTSPCredential(user, f"{passwd}123"))
+                    all_credentials.append(RTSPCredential(user, f"{passwd}@123"))
+                    all_credentials.append(RTSPCredential(user, f"{passwd}!"))
+                    all_credentials.append(RTSPCredential(user, passwd.capitalize()))
+
+            # Add PIN combinations for common usernames
+            for user in ['admin', 'root']:
+                all_credentials.extend([
+                    RTSPCredential(user, str(i)) for i in range(1000, 10000)
+                ])
+
+            credentials = list(set((c.username, c.password) for c in all_credentials))
+            credentials = [RTSPCredential(u, p) for u, p in credentials]
+        else:
+            credentials = []
+
         async def run_scan():
-            with tqdm(total=total_ops, desc="Scanning RTSP paths", unit="path") as pbar:
-                # Scan high priority paths first
+            try:
                 for priority in sorted(priority_groups.keys()):
                     paths = priority_groups[priority]
                     if not paths:
                         continue
 
-                    # Split paths into smaller batches for better control
-                    batch_size = 10
-                    for i in range(0, len(paths), batch_size):
-                        batch = paths[i:i + batch_size]
-                        batch_results = await self._scan_batch(batch, credentials)
-                        self.results.extend(batch_results)
-                        pbar.update(len(batch) * (len(credentials) + 1))
+                    print(f"{Fore.CYAN}[*] Scanning priority {priority} paths...{Style.RESET_ALL}")
+                    batch_size = 5  # Increased batch size for better performance
+                    with tqdm(total=len(paths), desc=f"Priority {priority}", unit="path") as pbar:
+                        for i in range(0, len(paths), batch_size):
+                            if self.stop_scan:
+                                break
+                            batch = paths[i:i + batch_size]
+                            batch_results = await self._scan_batch(batch, credentials)
+                            self.results.extend(batch_results)
 
-                        # If we found working paths/credentials, prioritize similar patterns
-                        if self.successful_paths:
-                            self._prioritize_similar_paths(paths[i + batch_size:])
+                            if self.successful_paths:
+                                self._prioritize_similar_paths(paths[i + batch_size:])
+                            
+                            pbar.update(len(batch))
+                
+                # Validate final scan results
+                scan_duration = time.time() - self.scan_start_time
+                success_rate = (self.responses_received / self.requests_sent * 100) if self.requests_sent > 0 else 0
+                
+                print(f"\n{Fore.BLUE}[*] Scan Statistics:{Style.RESET_ALL}")
+                print(f"[*] Duration: {scan_duration:.1f} seconds")
+                print(f"[*] Requests Sent: {self.requests_sent}")
+                print(f"[*] Responses Received: {self.responses_received}")
+                print(f"[*] Success Rate: {success_rate:.1f}%")
+                
+                if success_rate < 10:
+                    print(f"{Fore.YELLOW}[!] Warning: Low success rate, scan may not be working properly{Style.RESET_ALL}")
+                
+            except Exception as e:
+                print(f"\n{Fore.RED}[!] Error during scan: {str(e)}{Style.RESET_ALL}")
+                self.stop_scan = True
 
-                        if self.stop_scan:
-                            break
+        try:
+            asyncio.run(run_scan())
+        except KeyboardInterrupt:
+            print(f"\n{Fore.YELLOW}[!] Scan interrupted by user{Style.RESET_ALL}")
+            self.stop_scan = True
 
-        # Run the async scan
-        asyncio.run(run_scan())
-        
-        # Show channel mapping
-        if self.channel_map:
-            self._print_channel_mapping()
+        # Show final summary
+        successful = len([r for r in self.results if r['response_code'] == "200 OK"])
+        if successful:
+            print(f"\n{Fore.GREEN}[✓] Found {successful} accessible RTSP streams{Style.RESET_ALL}")
+        else:
+            print(f"\n{Fore.RED}[!] No Found - No accessible RTSP streams found{Style.RESET_ALL}")
 
         return self.results
 
@@ -488,7 +710,7 @@ def format_rtsp_results(results: List[Dict]) -> str:
     from colorama import Fore, Style
     
     if not results:
-        return f"{Fore.YELLOW}Sorry get lucky next time.{Style.RESET_ALL}"
+        return f"\n{Fore.RED}[!] No Found - No RTSP streams were discovered{Style.RESET_ALL}"
     
     output = []
     output.append(f"\n{Fore.CYAN}[*] RTSP Scan Results:{Style.RESET_ALL}")
@@ -575,5 +797,9 @@ def format_rtsp_results(results: List[Dict]) -> str:
             output.append(f"\n{Fore.GREEN}Channel {channel}:{Style.RESET_ALL}")
             for stream_type, url in streams.items():
                 output.append(f"  • {stream_type.title()}: {url}")
+    
+    # Show final status if no successful connections
+    if not (connected_streams or auth_successful_streams):
+        output = [f"\n{Fore.RED}[!] No Found - No accessible RTSP streams were discovered{Style.RESET_ALL}"]
     
     return '\n'.join(output)
