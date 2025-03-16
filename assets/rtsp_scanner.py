@@ -149,7 +149,7 @@ DEFAULT_CREDENTIALS = [
     RTSPCredential("dahua", "Dahua@123"),
     RTSPCredential("axis", "axis"),
     RTSPCredential("axis", "axis123"),
-    RTSPCredential("axis", "Axis@123"), 
+    RTSPCredential("axis", "Axis@123"),  # Fixed credential with both username and password
     RTSPCredential("samsung", "samsung"),
     RTSPCredential("samsung", "samsung123"),
     RTSPCredential("samsung", "Samsung@123"),
@@ -502,56 +502,139 @@ class RTSPScanner:
             logging.debug(f"Error testing {path.path}: {str(e)}")
             return None
 
-    async def _scan_batch(self, paths: List[RTSPPath], credentials: List[RTSPCredential]) -> List[Dict]:
-        """Optimized batch scanning"""
+    async def _scan_batch(self, paths: List[RTSPPath], credentials: List[RTSPCredential], auth_mode: bool = False) -> List[Dict]:
+        """Scan a batch of paths with separate auth handling"""
         tasks = []
         results = []
-        batch_size = 10  # Increased batch size
         
-        # Process paths in larger batches
-        for i in range(0, len(paths), batch_size):
-            batch = paths[i:i+batch_size]
-            batch_tasks = []
-            
-            for path in batch:
+        if not auth_mode:
+            # Regular path scanning without auth
+            for path in paths:
                 clean_path = path.path.rstrip('/')
                 current_url = f"rtsp://{self.host}:{self.port}{clean_path}"
                 print(f"\r{Fore.CYAN}[*] Checking: {current_url:<70}{Style.RESET_ALL}", end='', flush=True)
-                batch_tasks.append(self._async_test_rtsp_path(path))
+                tasks.append(self._async_test_rtsp_path(path))
 
-            # Wait for batch results
-            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
-            
+            # Wait for results
+            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
             for result in batch_results:
                 if isinstance(result, dict):
                     if result['response_code'] == "200 OK":
                         rtsp_url = f"rtsp://{self.host}:{self.port}{result['path'].rstrip('/')}"
                         print(f"\n{Fore.GREEN}[✓] Found: {rtsp_url}{Style.RESET_ALL}")
                         results.append(result)
-                    
-                    # Concurrent auth testing for responsive paths
-                    if credentials and (result['response_code'] == "401 Unauthorized" or result['response_code'] == "200 OK"):
-                        auth_path = RTSPPath(result['path'], result['description'], result['priority'])
-                        auth_tasks = []
-                        
-                        # Test multiple credentials concurrently
-                        for cred in credentials[:10]:  # Test top 10 credentials first
-                            auth_url = f"rtsp://{cred.username}:{cred.password}@{self.host}:{self.port}{auth_path.path.rstrip('/')}"
-                            print(f"\r{Fore.BLUE}[*] Trying: {auth_url:<70}{Style.RESET_ALL}", end='', flush=True)
-                            auth_tasks.append(self._async_test_rtsp_path(auth_path, cred))
-                        
-                        auth_results = await asyncio.gather(*auth_tasks, return_exceptions=True)
-                        for auth_result in auth_results:
-                            if isinstance(auth_result, dict) and auth_result['response_code'] == "200 OK":
-                                auth_url = f"rtsp://{auth_result['username']}:{auth_result['password']}@{self.host}:{self.port}{auth_result['path'].rstrip('/')}"
-                                print(f"\n{Fore.GREEN}[✓] Found: {auth_url}{Style.RESET_ALL}")
-                                results.append(auth_result)
-                                # Skip remaining credentials if one works
-                                break
+                    elif result['response_code'] == "401 Unauthorized":
+                        results.append(result)
+        else:
+            # Auth scanning mode
+            for path in paths:
+                if path.path not in self.successful_paths:  # Skip already successful paths
+                    for cred in credentials:
+                        auth_url = f"rtsp://{cred.username}:{cred.password}@{self.host}:{self.port}{path.path.rstrip('/')}"
+                        print(f"\r{Fore.BLUE}[*] Trying: {auth_url:<70}{Style.RESET_ALL}", end='', flush=True)
+                        auth_result = await self._async_test_rtsp_path(path, cred)
+                        if auth_result and auth_result['response_code'] == "200 OK":
+                            print(f"\n{Fore.GREEN}[✓] Found: {auth_url}{Style.RESET_ALL}")
+                            results.append(auth_result)
+                            break  # Found working credentials, move to next path
 
         return results
 
-    async def _optimize_paths(self, paths: List[RTSPPath]) -> List[RTSPPath]:
+    def scan(self, use_auth: bool = True, priority_level: int = 3) -> List[Dict]:
+        """Enhanced scanning with separate auth phase"""
+        if not self._test_connection():
+            logging.error(f"Cannot connect to {self.host}:{self.port}")
+            print(f"\n{Fore.RED}[!] No Found - Cannot connect to {self.host}:{self.port}{Style.RESET_ALL}")
+            return []
+
+        self.scan_start_time = time.time()
+        self.last_activity = time.time()
+        self.requests_sent = 0
+        self.responses_received = 0
+        self.results = []
+
+        paths_to_scan = [p for p in RTSP_PATHS if p.priority <= priority_level]
+        priority_groups = {i: [p for p in paths_to_scan if p.priority == i] for i in range(1, 4)}
+        credentials = DEFAULT_CREDENTIALS if use_auth else []
+
+        print(f"\n{Fore.BLUE}[*] Starting RTSP scan on {self.host}:{self.port}")
+        print(f"[*] Testing {len(paths_to_scan)} paths{' with authentication' if use_auth else ''}")
+        print(f"[*] Using {len(credentials)} credential sets" if use_auth else "")
+
+        async def run_scan():
+            # Phase 1: Scan without auth
+            for priority in sorted(priority_groups.keys()):
+                paths = priority_groups[priority]
+                if not paths:
+                    continue
+
+                print(f"\n{Fore.CYAN}[*] Scanning priority {priority} paths...{Style.RESET_ALL}")
+                batch_size = 10
+                with tqdm(total=len(paths), desc=f"Priority {priority}", unit="path") as pbar:
+                    for i in range(0, len(paths), batch_size):
+                        if self.stop_scan:
+                            break
+                        batch = paths[i:i + batch_size]
+                        batch_results = await self._scan_batch(batch, credentials, auth_mode=False)
+                        self.results.extend(batch_results)
+                        pbar.update(len(batch))
+
+            # Phase 2: Auth scanning for paths that returned 401 or weren't accessible
+            if use_auth and credentials:
+                auth_required = [r['path'] for r in self.results if r['response_code'] == "401 Unauthorized"]
+                if auth_required:
+                    print(f"\n{Fore.YELLOW}[*] Starting authentication scan for {len(auth_required)} paths...{Style.RESET_ALL}")
+                    auth_paths = [RTSPPath(p, "", 1) for p in auth_required]
+                    batch_size = 5
+                    with tqdm(total=len(auth_paths), desc="Auth scan", unit="path") as pbar:
+                        for i in range(0, len(auth_paths), batch_size):
+                            if self.stop_scan:
+                                break
+                            batch = auth_paths[i:i + batch_size]
+                            batch_results = await self._scan_batch(batch, credentials, auth_mode=True)
+                            self.results.extend(batch_results)
+                            pbar.update(len(batch))
+
+                # Try auth on all paths as fallback
+                print(f"\n{Fore.YELLOW}[*] Trying authentication on all paths...{Style.RESET_ALL}")
+                all_paths = [p for p in paths_to_scan if p.path not in self.successful_paths]
+                for priority in sorted(priority_groups.keys()):
+                    priority_paths = [p for p in all_paths if p.priority == priority]
+                    if priority_paths:
+                        print(f"{Fore.CYAN}[*] Trying auth on priority {priority} paths...{Style.RESET_ALL}")
+                        with tqdm(total=len(priority_paths), desc=f"Auth priority {priority}", unit="path") as pbar:
+                            for i in range(0, len(priority_paths), batch_size):
+                                if self.stop_scan:
+                                    break
+                                batch = priority_paths[i:i + batch_size]
+                                batch_results = await self._scan_batch(batch, credentials[:100], auth_mode=True)  # Try top 100 credentials
+                                self.results.extend(batch_results)
+                                pbar.update(len(batch))
+
+            # Show final statistics
+            scan_duration = time.time() - self.scan_start_time
+            success_rate = (self.responses_received / self.requests_sent * 100) if self.requests_sent > 0 else 0
+            print(f"\n{Fore.BLUE}[*] Scan Statistics:{Style.RESET_ALL}")
+            print(f"[*] Duration: {scan_duration:.1f} seconds")
+            print(f"[*] Requests Sent: {self.requests_sent}")
+            print(f"[*] Responses Received: {self.responses_received}")
+            print(f"[*] Success Rate: {success_rate:.1f}%")
+
+        try:
+            asyncio.run(run_scan())
+        except KeyboardInterrupt:
+            print(f"\n{Fore.YELLOW}[!] Scan interrupted by user{Style.RESET_ALL}")
+            self.stop_scan = True
+
+        successful = len([r for r in self.results if r['response_code'] == "200 OK"])
+        if successful:
+            print(f"\n{Fore.GREEN}[✓] Found {successful} accessible RTSP streams{Style.RESET_ALL}")
+        else:
+            print(f"\n{Fore.RED}[!] No Found - No accessible RTSP streams found{Style.RESET_ALL}")
+
+        return self.results
+
+    def _optimize_paths(self, paths: List[RTSPPath]) -> List[RTSPPath]:
         """Optimize path scanning order based on previous results"""
         if not self.successful_paths:
             return paths
@@ -601,181 +684,6 @@ class RTSPScanner:
             
             return result
         return None
-
-    async def _scan_batch(self, paths: List[RTSPPath], credentials: List[RTSPCredential]) -> List[Dict]:
-        """Scan a batch of paths with improved URL display"""
-        tasks = []
-        results = []
-        
-        # Try without auth first for all paths
-        for path in paths:
-            clean_path = path.path.rstrip('/')
-            current_url = f"rtsp://{self.host}:{self.port}{clean_path}"
-            print(f"\r{Fore.CYAN}[*] Checking: {current_url:<70}{Style.RESET_ALL}", end='', flush=True)
-            tasks.append(self._async_test_rtsp_path(path))
-
-        # Wait for non-auth results first
-        for coro in asyncio.as_completed(tasks):
-            if self.stop_scan:
-                break
-            try:
-                result = await coro
-                if result:
-                    if result['response_code'] == "200 OK":
-                        rtsp_url = f"rtsp://{self.host}:{self.port}{result['path'].rstrip('/')}"
-                        print(f"\n{Fore.GREEN}[✓] Found: {rtsp_url}{Style.RESET_ALL}")
-                        results.append(result)
-                    
-                    # Try auth for all paths that respond, not just 401
-                    if credentials:
-                        auth_path = RTSPPath(result['path'], result['description'], result['priority'])
-                        for cred in credentials:
-                            if self.stop_scan:
-                                break
-                            auth_url = f"rtsp://{cred.username}:{cred.password}@{self.host}:{self.port}{auth_path.path.rstrip('/')}"
-                            print(f"\r{Fore.BLUE}[*] Trying: {auth_url:<70}{Style.RESET_ALL}", end='', flush=True)
-                            auth_result = await self._async_test_rtsp_path(auth_path, cred)
-                            if auth_result and auth_result['response_code'] == "200 OK":
-                                print(f"\n{Fore.GREEN}[✓] Found: {auth_url}{Style.RESET_ALL}")
-                                results.append(auth_result)
-
-            except Exception as e:
-                logging.debug(f"Error in scan batch: {e}")
-
-        return results
-
-    def scan(self, use_auth: bool = True, priority_level: int = 3) -> List[Dict]:
-        """Enhanced scanning with validation"""
-        if not self._test_connection():
-            logging.error(f"Cannot connect to {self.host}:{self.port}")
-            print(f"\n{Fore.RED}[!] No Found - Cannot connect to {self.host}:{self.port}{Style.RESET_ALL}")
-            return []
-
-        self.scan_start_time = time.time()
-        self.last_activity = time.time()
-        self.requests_sent = 0
-        self.responses_received = 0
-
-        self.results = []
-        paths_to_scan = [p for p in RTSP_PATHS if p.priority <= priority_level]
-        priority_groups = {i: [p for p in paths_to_scan if p.priority == i] for i in range(1, 4)}
-        credentials = DEFAULT_CREDENTIALS if use_auth else []
-        total_ops = sum(len(paths) * (len(credentials) + 1) for paths in priority_groups.values())
-
-        print(f"\n{Fore.BLUE}[*] Starting RTSP scan on {self.host}:{self.port}")
-        print(f"[*] Testing {len(paths_to_scan)} paths{' with authentication' if use_auth else ''}")
-        print(f"[*] Using {len(credentials)} credential sets" if use_auth else "")
-        print(f"[*] Maximum operations: {total_ops}{Style.RESET_ALL}\n")
-
-        # Enhanced credentials handling
-        all_credentials = []
-        if use_auth:
-            # Base credentials from DEFAULT_CREDENTIALS
-            all_credentials.extend(DEFAULT_CREDENTIALS)
-
-            # Common word-based passwords to try with all usernames
-            word_passwords = {
-                'password', 'admin', 'admin123', '123456', '12345',
-                'welcome', 'welcome123', 'letmein', 'changeme',
-                'qwerty', 'abc123', 'monkey', 'dragon', 'master',
-                'login', 'system', 'cisco', 'default', 'pass',
-                'adminadmin', 'support', 'rootroot', 'pass123',
-                'password123', 'admin1234', 'secret', 'secret123',
-                '1234', '4321', '0000', '1111', '2222',
-                'abc@123', 'P@ssw0rd', 'p@ssw0rd', 'passw0rd'
-            }
-
-            # Common usernames to try with all passwords
-            usernames = {
-                'admin', 'root', 'user', 'guest', 'supervisor',
-                'administrator', 'Administrator', 'service',
-                'operator', 'camera', 'system', 'support',
-                'hikvision', 'dahua', 'axis', 'samsung', 'sony'
-            }
-
-            # Add all combinations of usernames and passwords
-            for user in usernames:
-                for passwd in word_passwords:
-                    all_credentials.append(RTSPCredential(user, passwd))
-                    all_credentials.append(RTSPCredential(user, f"{passwd}123"))
-                    all_credentials.append(RTSPCredential(user, f"{passwd}@123"))
-                    all_credentials.append(RTSPCredential(user, f"{passwd}!"))
-                    all_credentials.append(RTSPCredential(user, passwd.capitalize()))
-
-            # Add PIN combinations for common usernames
-            for user in ['admin', 'root']:
-                all_credentials.extend([
-                    RTSPCredential(user, str(i)) for i in range(1000, 10000)
-                ])
-
-            credentials = list(set((c.username, c.password) for c in all_credentials))
-            credentials = [RTSPCredential(u, p) for u, p in credentials]
-        else:
-            credentials = []
-
-        async def run_scan():
-            try:
-                for priority in sorted(priority_groups.keys()):
-                    paths = priority_groups[priority]
-                    if not paths:
-                        continue
-
-                    print(f"{Fore.CYAN}[*] Scanning priority {priority} paths...{Style.RESET_ALL}")
-                    batch_size = 5  # Increased batch size for better performance
-                    with tqdm(total=len(paths), desc=f"Priority {priority}", unit="path") as pbar:
-                        for i in range(0, len(paths), batch_size):
-                            if self.stop_scan:
-                                break
-                            batch = paths[i:i + batch_size]
-                            batch_results = await self._scan_batch(batch, credentials)
-                            self.results.extend(batch_results)
-
-                            if self.successful_paths:
-                                self._prioritize_similar_paths(paths[i + batch_size:])
-                            
-                            pbar.update(len(batch))
-                
-                # Validate final scan results
-                scan_duration = time.time() - self.scan_start_time
-                success_rate = (self.responses_received / self.requests_sent * 100) if self.requests_sent > 0 else 0
-                
-                print(f"\n{Fore.BLUE}[*] Scan Statistics:{Style.RESET_ALL}")
-                print(f"[*] Duration: {scan_duration:.1f} seconds")
-                print(f"[*] Requests Sent: {self.requests_sent}")
-                print(f"[*] Responses Received: {self.responses_received}")
-                print(f"[*] Success Rate: {success_rate:.1f}%")
-                
-                if success_rate < 10:
-                    print(f"{Fore.YELLOW}[!] Warning: Low success rate, scan may not be working properly{Style.RESET_ALL}")
-                
-            except Exception as e:
-                print(f"\n{Fore.RED}[!] Error during scan: {str(e)}{Style.RESET_ALL}")
-                self.stop_scan = True
-
-        try:
-            asyncio.run(run_scan())
-        except KeyboardInterrupt:
-            print(f"\n{Fore.YELLOW}[!] Scan interrupted by user{Style.RESET_ALL}")
-            self.stop_scan = True
-
-        # Show final summary
-        successful = len([r for r in self.results if r['response_code'] == "200 OK"])
-        if successful:
-            print(f"\n{Fore.GREEN}[✓] Found {successful} accessible RTSP streams{Style.RESET_ALL}")
-        else:
-            print(f"\n{Fore.RED}[!] No Found - No accessible RTSP streams found{Style.RESET_ALL}")
-
-        return self.results
-
-    def _prioritize_similar_paths(self, remaining_paths: List[RTSPPath]) -> None:
-        """Reorder remaining paths based on successful patterns"""
-        if not self.successful_paths:
-            return
-
-        def similarity_score(path: str) -> int:
-            return max(len(os.path.commonprefix([path, sp])) for sp in self.successful_paths)
-
-        remaining_paths.sort(key=lambda p: similarity_score(p.path), reverse=True)
 
     def _print_channel_mapping(self) -> None:
         """Print discovered channel mapping"""
