@@ -49,6 +49,7 @@ pip install -r requirements.txt
 ## Usage
 Here are some basic examples of how to use NEScan:
 
+
 ```bash
 # Scan a specific IP address
 python NEScan.py --target 192.168.1.1
